@@ -8,6 +8,10 @@ let router = new Router({
     {
       path: "/",
       component: require("@/pages/index/Index").default,
+    },
+    {
+      path: "/basketball",
+      component: require("@/pages/basketball/Index").default,
     }
   ]
 })
