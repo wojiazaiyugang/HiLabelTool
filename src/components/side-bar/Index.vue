@@ -39,6 +39,7 @@ export default {
     flex-direction: column;
     align-items: center;
     padding: 5px;
+    white-space: nowrap;
 
     &:hover {
       cursor: pointer;

@@ -12,17 +12,27 @@
 </template>
 
 <script>
-import konva from "konva"
+import Konva from "konva"
 import SideBar from "@/components/side-bar/Index"
 export default {
   name: "Index",
   components: {SideBar},
+  computed: {
+    container() {return document.getElementById(this.containerID)}
+  },
   mounted() {
     this.initKonva()
+    this.resizeObserver = new ResizeObserver(() => {
+      this.resizeImage()
+    })
+    this.resizeObserver.observe(document.getElementById("app"))
   },
   data() {
     return {
-      image: "C:\\Users\\wojia\\Desktop\\1\\00001.jpg"
+      containerID: "stage", //div的id
+      setTimeoutTimer: null, //
+      stage: null, // konva的stage
+      imageURL: "C:\\Users\\wojia\\Desktop\\1\\00001.jpg"
     }
   },
   methods: {
@@ -30,14 +40,34 @@ export default {
      * 初始化konva
      */
     initKonva() {
-      let stage = new konva.Stage({
-        container: "stage",
-        width: 200,
-        height: 200
+      this.stage = new Konva.Stage({
+        container: this.containerID,
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight
       })
-      let layer = new konva.Layer()
-      stage.add(layer)
-      
+      let layer = new Konva.Layer()
+      this.stage.add(layer)
+      let imageObj = new Image()
+      imageObj.src = this.imageURL
+      let image = new Konva.Image({
+        image: imageObj,
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight
+      })
+      layer.add(image)
+    },
+    /**
+     * resize要标注的图片
+     */
+    resizeImage() {
+      this.setTimeoutTimer && clearTimeout(this.setTimeoutTimer)
+      this.setTimeoutTimer = setTimeout(()=> {
+        console.log(this.container.offsetWidth, this.container.offsetHeight)
+        this.stage.width(this.container.offsetWidth)
+        this.stage.height(this.container.offsetHeight)
+        this.stage.scale({ x: 0.9, y: 0.9 })
+      }, 1000)
+
     }
   }
 }

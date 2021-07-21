@@ -1,5 +1,5 @@
 const state = {
-  setting: "i am setting"
+  setting: {}
 }
 
 
