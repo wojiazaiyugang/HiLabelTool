@@ -10,7 +10,7 @@ const mutations = {
     state.setting = setting
   },
   setShowCrossHair(state, showCrossHair) {
-    state.showCrossHair = showCrossHair
+    state.setting.showCrossHair = showCrossHair
   }
 }
 
