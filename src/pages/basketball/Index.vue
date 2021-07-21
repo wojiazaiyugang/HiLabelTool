@@ -6,32 +6,66 @@
           <i class="iconfont icon-juxing"></i>
           矩形
         </div>
-        <div class="button" :class="setting.showCrossHair ? 'active': ''" @click="setting.showCrossHair = !setting.showCrossHair">
+        <div class="button" :class="setting.showCrossHair ? 'active': ''"
+             @click="setting.showCrossHair = !setting.showCrossHair">
           <i class="iconfont icon-shizixian-"></i>
           十字线
+        </div>
+        <div class="button" @click="labelImage(currentImageIndex - 1)">
+          <i class="iconfont icon-shangyige"></i>
+          上一个
+        </div>
+        <div class="button" @click="labelImage(currentImageIndex + 1)">
+          <i class="iconfont icon-xiayige"></i>
+          下一个
         </div>
         <div class="button" style="margin-top: auto" @click="routeTo('/')">
           <i class="iconfont icon-shouye"></i>
           首页
         </div>
-        <div class="button">
+        <div class="button" @click="settingDialogVisible = true">
           <i class="iconfont icon-shezhi"></i>
           设置
         </div>
       </div>
       <div id="stage" style="flex: 1;border: 1px solid black;overflow: hidden">
       </div>
-      <div style="width: 80px;background: rgba(75,58,58,0.07)">21321</div>
+      <div style="width: 80px;background: rgba(75,58,58,0.07)">
+        {{ labelResults.length }}
+        {{currentImageIndex}}
+      </div>
     </div>
-    <div style="height: 80px;background: rgba(203,191,191,0.12)">
+    <div style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);border-top: 1px solid black;overflow-y: auto">
+      <img v-for="(image, index) in images" :key="image" :src="image" style="height: 100%;width: auto">
     </div>
+    <el-dialog title="设置" :visible.sync="settingDialogVisible" fullscreen>
+      <el-form :model="setting" label-width="80px">
+        <el-form-item label="数据目录">
+          <el-input disabled v-model="setting.folder" style="width: 700px"></el-input>
+          <el-button @click="selectFolder">选择</el-button>
+        </el-form-item>
+      </el-form>
+      <div slot="footer">
+        <el-button @click="this.loadDataFolder">确定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
+import path from "path"
 import Konva from "konva"
+import {remote} from "electron"
+import * as fs from "fs"
 
 import {routeTo} from "@/utils/router"
+
+const STATUS = {
+  normal: "正常状态",
+  drawing: "正在绘图",
+  selecting: "选择了某个图形",
+  moving: "正在移动某个图形"
+}
 
 export default {
   name: "Index",
@@ -49,6 +83,8 @@ export default {
   },
   data() {
     return {
+      status: "", // 当前状态
+      settingDialogVisible: true, // 设置对话框可见性
       containerID: "stage", //div的id
       setTimeoutTimer: null, //
       stage: null, // konva的stage
@@ -61,14 +97,58 @@ export default {
         x: null,
         y: null
       },
-      labelResults: [], // 当前标注结果
+      labelResults: [], // 当前标注结果, 每个元素是个对象，有属性label和bbox
       setting: { // 配置
         showCrossHair: false, // 是否显示辅助十字线
-      }
+        folder: "C:\\Users\\wojiazaiyugang\\Desktop\\1", // 数据文件夹
+      },
+      images: [], // 图片列表
+      currentImageIndex: -1, // 当前的index
     }
   },
   methods: {
-    routeTo : path => routeTo(path),
+    routeTo: path => routeTo(path),
+    selectFolder() {
+      let folders = remote.dialog.showOpenDialogSync({
+        properties: ["openDirectory"]
+      })
+      if (folders) this.setting.folder = folders[0]
+    },
+    loadDataFolder() {
+      this.settingDialogVisible = false
+      fs.readdirSync(this.setting.folder).forEach(item => {
+        if (["jpg", "png"].includes(item.split(".").pop())) this.images.push(path.join(this.setting.folder, item))
+      })
+      this.labelImage(0)
+    },
+    /**
+     * 加载下一张图片
+     */
+    labelImage(index) {
+      if (index < 0) {
+        this.currentImageIndex = 0
+        return
+      }
+      if (index === this.images.length) {
+        this.currentImageIndex = this.images.length - 1
+        return
+      }
+      this.saveLabelResult()
+      this.labelLayer.removeChildren()
+      this.imageLayer.removeChildren()
+      this.currentImageIndex = index
+      let imageObj = new Image()
+      imageObj.src = this.images[this.currentImageIndex]
+      let image = new Konva.Image({
+        image: imageObj,
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight
+      })
+      this.imageLayer.add(image)
+    },
+    saveLabelResult() {
+      console.log(this.images[this.currentImageIndex], this.labelLayer.getChildren())
+    },
     /**
      * 初始化konva
      */
@@ -84,14 +164,6 @@ export default {
       this.stage.on("mousedown", () => this.onMouseDown())
       this.stage.on("mouseup", () => this.onMouseUp())
       this.imageLayer = new Konva.Layer()
-      let imageObj = new Image()
-      imageObj.src = this.imageURL
-      let image = new Konva.Image({
-        image: imageObj,
-        width: this.container.offsetWidth,
-        height: this.container.offsetHeight
-      })
-      this.imageLayer.add(image)
       this.labelLayer = new Konva.Layer()
       this.drawLayer = new Konva.Layer()
       this.stage.add(this.imageLayer, this.labelLayer, this.drawLayer)
@@ -108,12 +180,12 @@ export default {
       }, 50)
     },
     onMouseEnter() {
+      this.status = STATUS.normal
       this.stage.container().style.cursor = "crosshair"
     },
     onMouseLeave() {
-      this.drawing = false
+      this.status = STATUS.normal
       this.stage.container().style.cursor = "default"
-      this.drawLayer.removeChildren()
     },
     /**
      * 在图片上移动的事件
@@ -134,7 +206,7 @@ export default {
             strokeWidth: 1,
             dash: [20, 5]
           }))
-      if (this.drawing)
+      if (this.status === STATUS.drawing)
         this.drawLayer.add(new Konva.Rect({
           x: this.drawStartPoint.x,
           y: this.drawStartPoint.y,
@@ -143,20 +215,43 @@ export default {
           stroke: "#000",
           strokeWidth: 2
         }))
-        // console.log(this.stage.getRelativePointerPosition())
     },
     onMouseDown() {
-      this.startDraw()
+      if (this.status !== STATUS.selecting)
+        this.startDraw()
     },
     onMouseUp() {
-      this.stopDraw()
+      if (this.status !== STATUS.selecting)
+        this.stopDraw()
     },
     startDraw() {
-      this.drawing = true
+      this.status = STATUS.drawing
       this.drawStartPoint = this.stage.getRelativePointerPosition()
     },
     stopDraw() {
-      this.drawing = false
+      this.status = STATUS.normal
+      let bbox = new Konva.Rect({
+        x: this.drawStartPoint.x,
+        y: this.drawStartPoint.y,
+        width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
+        height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
+        stroke: "#000",
+        strokeWidth: 2,
+        draggable: true
+      })
+      bbox.on("mouseenter", () => {
+        if (this.status !== STATUS.drawing) {
+          this.stage.container().style.cursor = "pointer"
+          this.status = STATUS.selecting
+        }
+      })
+      bbox.on("mouseleave", () => {
+        if (this.status !== STATUS.drawing) {
+          this.stage.container().style.cursor = "crosshair"
+          this.status = STATUS.normal
+        }
+      })
+      this.labelLayer.add(bbox)
     }
   }
 }
@@ -191,6 +286,19 @@ export default {
 
     .active {
       color: #55a532;
+    }
+  }
+}
+</style>
+
+<style lang="scss">
+.basketball {
+  .el-dialog {
+    display: flex;
+    flex-direction: column;
+
+    .el-dialog__body {
+      flex: 1;
     }
   }
 }

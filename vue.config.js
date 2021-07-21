@@ -71,6 +71,7 @@ module.exports = {
         //           "installerHeaderIcon": "public/image/RobotStudio/logo.ico", // 不知道是啥
         //         },
       },
+      nodeIntegration: true
     //       npmRebuild: false
     }
   }

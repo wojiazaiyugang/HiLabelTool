@@ -6,6 +6,20 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "689274",
+      "name": "前进 下一个",
+      "font_class": "xiayige",
+      "unicode": "e804",
+      "unicode_decimal": 59396
+    },
+    {
+      "icon_id": "23037563",
+      "name": "前进 下一个",
+      "font_class": "shangyige",
+      "unicode": "e805",
+      "unicode_decimal": 59397
+    },
+    {
       "icon_id": "2391720",
       "name": "矩形",
       "font_class": "juxing",
