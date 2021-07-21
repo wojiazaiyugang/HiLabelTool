@@ -6,6 +6,8 @@ import "iview/dist/styles/iview.css"
 import App from "./App.vue"
 import router from "./router"
 import store from "./store"
+// 阿里巴巴图标
+import "@/assets/css/iconfont.css"
 
 Vue.use(ElementUI)
 Vue.use(iView)

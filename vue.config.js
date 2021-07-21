@@ -5,10 +5,10 @@ function resolve(dir) {
 }
 //
 module.exports = {
-//   // 输出文件目录
-//   outputDir: "dist",
-//   assetsDir: "assets", // 静态资源目录 (js, css, img, fonts)
-//   publicPath: "./",
+  //   // 输出文件目录
+  //   outputDir: "dist",
+  //   assetsDir: "assets", // 静态资源目录 (js, css, img, fonts)
+  //   publicPath: "./",
   lintOnSave: process.env.NODE_ENV !== "production",
   devServer: {
     // can be overwritten by process.env.HOST

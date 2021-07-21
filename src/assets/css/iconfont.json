@@ -1,0 +1,23 @@
+{
+  "id": "2690533",
+  "name": "HiLabelTool",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "18858426",
+      "name": "设 置",
+      "font_class": "shezhi",
+      "unicode": "e6b5",
+      "unicode_decimal": 59061
+    },
+    {
+      "icon_id": "15468382",
+      "name": "首 页",
+      "font_class": "shouye",
+      "unicode": "e651",
+      "unicode_decimal": 58961
+    }
+  ]
+}
