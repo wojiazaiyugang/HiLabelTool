@@ -45,6 +45,12 @@ export default {
         width: this.container.offsetWidth,
         height: this.container.offsetHeight
       })
+      this.stage.on("mouseenter", ()=> {
+        this.stage.container().style.cursor = "crosshair"
+      })
+      this.stage.on("mouseleave", ()=> {
+        this.stage.container().style.cursor = "default"
+      })
       let layer = new Konva.Layer()
       this.stage.add(layer)
       let imageObj = new Image()
