@@ -1,5 +1,5 @@
 {
-  "name": "HiLabelTool",
+  "name": "hi-label-tool",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -16,7 +16,8 @@
     "core-js": "^3.6.5",
     "vue": "^2.6.11",
     "vue-cli-plugin-electron-builder": "^2.1.1",
-    "vue-router": "^3.5.2"
+    "vue-router": "^3.5.2",
+    "vuex": "^3.6.2"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",
