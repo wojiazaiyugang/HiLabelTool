@@ -2,7 +2,7 @@
   <div class="basketball">
     <div style="display: flex;flex: 1">
       <SideBar style="width: 50px;height: 100%"/>
-      <div id="stage" style="flex: 1;border: 1px solid black">
+      <div id="stage" style="flex: 1;border: 1px solid black;overflow: hidden">
       </div>
       <div style="width: 80px;background: rgba(75,58,58,0.07)">21321</div>
     </div>
@@ -25,7 +25,7 @@ export default {
     this.resizeObserver = new ResizeObserver(() => {
       this.resizeImage()
     })
-    this.resizeObserver.observe(document.getElementById("app"))
+    this.resizeObserver.observe(document.getElementById(this.containerID))
   },
   data() {
     return {
@@ -63,10 +63,10 @@ export default {
       this.setTimeoutTimer && clearTimeout(this.setTimeoutTimer)
       this.setTimeoutTimer = setTimeout(()=> {
         console.log(this.container.offsetWidth, this.container.offsetHeight)
-        this.stage.width(this.container.offsetWidth)
-        this.stage.height(this.container.offsetHeight)
-        this.stage.scale({ x: 0.9, y: 0.9 })
-      }, 1000)
+        this.stage.width(this.container.offsetWidth-2)
+        this.stage.height(this.container.offsetHeight-2)
+        // this.stage.scale({ x: 0.9, y: 0.9 })
+      }, 50)
 
     }
   }
@@ -79,5 +79,6 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 </style>
