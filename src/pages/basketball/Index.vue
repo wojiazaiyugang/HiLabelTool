@@ -19,6 +19,10 @@
           <i class="iconfont icon-xiayige"></i>
           下一个
         </div>
+        <div class="button" @click="deleteLabelRect">
+          <i class="iconfont icon-delete"></i>
+          删除
+        </div>
         <div class="button" style="margin-top: auto" @click="routeTo('/')">
           <i class="iconfont icon-shouye"></i>
           首页
@@ -31,11 +35,14 @@
       <div id="stage" style="flex: 1;border: 1px solid black;overflow: hidden">
       </div>
       <div style="width: 80px;background: rgba(75,58,58,0.07)">
-        {{currentImageIndex}}
+        标注个数{{ labelBBoxCount }}
+        当前帧{{ currentImageIndex }}
+        状态{{ status }}
       </div>
     </div>
-    <div style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);border-top: 1px solid black;overflow-y: auto">
-      <img v-for="(image, index) in images" :key="image" :src="image" style="height: 100%;width: auto">
+    <div
+      style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);border-top: 1px solid black;overflow-y: auto">
+      <!--      <img v-for="(image, index) in images" :key="image" :src="image" style="height: 100%;width: auto">-->
     </div>
     <el-dialog title="设置" :visible.sync="settingDialogVisible" fullscreen>
       <el-form :model="setting" label-width="120px">
@@ -63,19 +70,33 @@ import * as fs from "fs"
 
 import {routeTo} from "@/utils/router"
 
-const STATUS = {
+const STATUS = { // 状态
   normal: "正常状态",
   drawing: "正在绘图",
-  selecting: "选择了某个图形",
-  moving: "正在移动某个图形"
+  hovering: "悬停在某个图形上",
+  moving: "正在移动某个图形",
+  resizing: "正在resize某个图形",
 }
+const LABEL_RECT_NAME = "LABEL_RECT_NAME" // 标注的bbox的名字
 
 export default {
   name: "Index",
   computed: {
     container() {
       return document.getElementById(this.containerID)
-    }
+    },
+    labelBBoxCount() {
+      return this.labelLayer ? this.labelLayer.children.filter(child => child.hasName(LABEL_RECT_NAME)).length : 0
+    },
+    /**
+     * x方向缩放比例
+     */
+    scaleX() {
+      return this.currentImageSize.width / this.container.offsetWidth
+    },
+    scaleY() {
+      return this.currentImageSize.height / this.container.offsetHeight
+    },
   },
   mounted() {
     this.initKonva()
@@ -110,7 +131,8 @@ export default {
       currentImageSize: { // 当前原视图像的size
         width: null,
         height: null
-      }
+      },
+      selectedLabelRect: null, // 选择的label rect
     }
   },
   methods: {
@@ -120,6 +142,11 @@ export default {
         properties: ["openDirectory"]
       })
       if (folders) this.setting.inputFolder = folders[0]
+    },
+
+    deleteLabelRect() {
+      this.stage.find("Transformer").forEach(t => t.destroy())
+      this.selectedLabelRect && this.selectedLabelRect.destroy()
     },
     loadDataFolder() {
       this.settingDialogVisible = false
@@ -161,10 +188,9 @@ export default {
     saveLabelResult() {
       let rect = this.labelLayer.getChildren()[0]
       if (rect) {
-        let [scaleX, scaleY] = [this.currentImageSize.width / this.container.offsetWidth, this.currentImageSize.height / this.container.offsetHeight]
-        let [ltX, ltY] = [parseInt(rect.position().x * scaleX), parseInt(rect.position().y * scaleY)]
-        let [rbX, rbY] = [ltX + parseInt(rect.width() * scaleX), ltY + parseInt(rect.height() * scaleY)]
-        console.log(ltX, ltY, rbX, rbY)
+        let [ltX, ltY] = [parseInt(rect.position().x * this.scaleX), parseInt(rect.position().y * this.scaleY)]
+        let [rbX, rbY] = [ltX + parseInt(rect.width() * this.scaleX * rect.scaleX()), ltY + parseInt(rect.height() * this.scaleY * rect.scaleY())]
+        console.log(ltX, ltY, rbX, rbY, rect.scaleX(), rect.scaleY())
       }
     },
     /**
@@ -181,6 +207,7 @@ export default {
       this.stage.on("mousemove", () => this.onMouseMove())
       this.stage.on("mousedown", () => this.onMouseDown())
       this.stage.on("mouseup", () => this.onMouseUp())
+      this.stage.on("click", ($event) => this.onClick($event))
       this.imageLayer = new Konva.Layer()
       this.labelLayer = new Konva.Layer()
       this.drawLayer = new Konva.Layer()
@@ -194,7 +221,6 @@ export default {
       this.setTimeoutTimer = setTimeout(() => {
         this.stage.width(this.container.offsetWidth - 2)
         this.stage.height(this.container.offsetHeight - 2)
-        // this.stage.scale({ x: 0.9, y: 0.9 })
       }, 50)
     },
     onMouseEnter() {
@@ -211,20 +237,41 @@ export default {
      */
     onMouseMove() {
       this.drawLayer.removeChildren()
-      if (this.setting.showCrossHair && this.status === STATUS.normal)
+      if (this.setting.showCrossHair && this.status === STATUS.normal) {
+        let [x, y] = [this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y]
+        let label = new Konva.Label({
+          x: x + 10,
+          y: y - 10,
+          opacity: 0.7
+        })
+        label.add(
+          new Konva.Tag({
+            fill: "#000"
+          }),
+          new Konva.Text({
+            text: `(${parseInt(x * this.scaleX)},${parseInt(y * this.scaleY)})`,
+            fontFamily: "Calibri",
+            fontSize: 18,
+            padding: 5,
+            fill: "#FFF"
+          })
+        )
         this.drawLayer.add(
           new Konva.Line({
-            points: [0, this.stage.getRelativePointerPosition().y, this.stage.width(), this.stage.getRelativePointerPosition().y],
+            points: [0, y, this.stage.width(), y],
             stroke: "green",
             strokeWidth: 1,
             dash: [20, 5]
           }),
           new Konva.Line({
-            points: [this.stage.getRelativePointerPosition().x, 0, this.stage.getRelativePointerPosition().x, this.stage.height()],
+            points: [x, 0, x, this.stage.height()],
             stroke: "green",
             strokeWidth: 1,
             dash: [20, 5]
-          }))
+          }),
+          label
+        )
+      }
       if (this.status === STATUS.drawing)
         this.drawLayer.add(new Konva.Rect({
           x: this.drawStartPoint.x,
@@ -238,10 +285,24 @@ export default {
     onMouseDown() {
       if (this.status === STATUS.normal)
         this.startDraw()
-      else if (this.status === STATUS.selecting) {
+      else if (this.status === STATUS.hovering) {
         this.status = STATUS.moving
         this.drawLayer.removeChildren()
       }
+    },
+    /**
+     * 舞台点击事件，用于添加和删除transformer
+     */
+    onClick(e) {
+      this.stage.find("Transformer").forEach(t => t.destroy())
+      if (!e.target.hasName(LABEL_RECT_NAME)) {
+        this.selectedLabelRect = null
+        return
+      }
+      let transFormer = new Konva.Transformer()
+      this.labelLayer.add(transFormer)
+      this.selectedLabelRect = e.target
+      transFormer.nodes([e.target])
     },
     onMouseUp() {
       if (this.status === STATUS.drawing)
@@ -253,28 +314,36 @@ export default {
     },
     stopDraw() {
       this.status = STATUS.normal
-      let bbox = new Konva.Rect({
+      let rect = new Konva.Rect({
         x: this.drawStartPoint.x,
         y: this.drawStartPoint.y,
         width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
         height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
         stroke: "#000",
         strokeWidth: 2,
-        draggable: true
+        draggable: true,
+        name: LABEL_RECT_NAME
       })
-      bbox.on("mouseenter", () => {
+      if (rect.width() < 20) return // 太小的bbox不要
+      rect.on("mouseenter", () => {
         if (this.status !== STATUS.drawing) {
           this.stage.container().style.cursor = "pointer"
-          this.status = STATUS.selecting
+          this.status = STATUS.hovering
         }
       })
-      bbox.on("mouseleave", () => {
+      rect.on("mouseleave", () => {
         if (this.status !== STATUS.drawing) {
           this.stage.container().style.cursor = "crosshair"
           this.status = STATUS.normal
         }
       })
-      this.labelLayer.add(bbox)
+      rect.on("transformstart", () => {
+        this.status = STATUS.resizing
+      })
+      rect.on("transformend", () => {
+        this.status = STATUS.normal
+      })
+      this.labelLayer.add(rect)
     }
   }
 }
