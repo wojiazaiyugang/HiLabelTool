@@ -15,7 +15,7 @@
           <i class="iconfont icon-shangyige"></i>
           上一个
         </div>
-        <div class="button" @click="labelImage(currentImageIndex + 1)">
+        <div class="button" @click="saveLabelResult">
           <i class="iconfont icon-xiayige"></i>
           下一个
         </div>
@@ -31,7 +31,6 @@
       <div id="stage" style="flex: 1;border: 1px solid black;overflow: hidden">
       </div>
       <div style="width: 80px;background: rgba(75,58,58,0.07)">
-        {{ labelResults.length }}
         {{currentImageIndex}}
       </div>
     </div>
@@ -39,9 +38,13 @@
       <img v-for="(image, index) in images" :key="image" :src="image" style="height: 100%;width: auto">
     </div>
     <el-dialog title="设置" :visible.sync="settingDialogVisible" fullscreen>
-      <el-form :model="setting" label-width="80px">
+      <el-form :model="setting" label-width="120px">
         <el-form-item label="数据目录">
-          <el-input disabled v-model="setting.folder" style="width: 700px"></el-input>
+          <el-input disabled v-model="setting.inputFolder" style="width: 700px"></el-input>
+          <el-button @click="selectFolder">选择</el-button>
+        </el-form-item>
+        <el-form-item label="生成结果目录">
+          <el-input disabled v-model="setting.outputFolder" style="width: 700px"></el-input>
           <el-button @click="selectFolder">选择</el-button>
         </el-form-item>
       </el-form>
@@ -97,13 +100,17 @@ export default {
         x: null,
         y: null
       },
-      labelResults: [], // 当前标注结果, 每个元素是个对象，有属性label和bbox
       setting: { // 配置
         showCrossHair: false, // 是否显示辅助十字线
-        folder: "C:\\Users\\wojiazaiyugang\\Desktop\\1", // 数据文件夹
+        inputFolder: "C:\\Users\\wojia\\Desktop\\1", // 输入数据文件夹
+        outputFolder: "C:\\Users\\wojia\\Desktop", // 输出文件夹
       },
       images: [], // 图片列表
       currentImageIndex: -1, // 当前的index
+      currentImageSize: { // 当前原视图像的size
+        width: null,
+        height: null
+      }
     }
   },
   methods: {
@@ -112,12 +119,12 @@ export default {
       let folders = remote.dialog.showOpenDialogSync({
         properties: ["openDirectory"]
       })
-      if (folders) this.setting.folder = folders[0]
+      if (folders) this.setting.inputFolder = folders[0]
     },
     loadDataFolder() {
       this.settingDialogVisible = false
-      fs.readdirSync(this.setting.folder).forEach(item => {
-        if (["jpg", "png"].includes(item.split(".").pop())) this.images.push(path.join(this.setting.folder, item))
+      fs.readdirSync(this.setting.inputFolder).forEach(item => {
+        if (["jpg", "png"].includes(item.split(".").pop())) this.images.push(path.join(this.setting.inputFolder, item))
       })
       this.labelImage(0)
     },
@@ -139,6 +146,11 @@ export default {
       this.currentImageIndex = index
       let imageObj = new Image()
       imageObj.src = this.images[this.currentImageIndex]
+      this.currentImageSize = {
+        width: imageObj.width,
+        height: imageObj.height
+      }
+      // console.log(imageObj.size())
       let image = new Konva.Image({
         image: imageObj,
         width: this.container.offsetWidth,
@@ -147,7 +159,13 @@ export default {
       this.imageLayer.add(image)
     },
     saveLabelResult() {
-      console.log(this.images[this.currentImageIndex], this.labelLayer.getChildren())
+      let rect = this.labelLayer.getChildren()[0]
+      if (rect) {
+        let [scaleX, scaleY] = [this.currentImageSize.width / this.container.offsetWidth, this.currentImageSize.height / this.container.offsetHeight]
+        let [ltX, ltY] = [parseInt(rect.position().x * scaleX), parseInt(rect.position().y * scaleY)]
+        let [rbX, rbY] = [ltX + parseInt(rect.width() * scaleX), ltY + parseInt(rect.height() * scaleY)]
+        console.log(ltX, ltY, rbX, rbY)
+      }
     },
     /**
      * 初始化konva
@@ -185,6 +203,7 @@ export default {
     },
     onMouseLeave() {
       this.status = STATUS.normal
+      this.drawLayer.removeChildren()
       this.stage.container().style.cursor = "default"
     },
     /**
@@ -192,7 +211,7 @@ export default {
      */
     onMouseMove() {
       this.drawLayer.removeChildren()
-      if (this.setting.showCrossHair)
+      if (this.setting.showCrossHair && this.status === STATUS.normal)
         this.drawLayer.add(
           new Konva.Line({
             points: [0, this.stage.getRelativePointerPosition().y, this.stage.width(), this.stage.getRelativePointerPosition().y],
@@ -217,11 +236,15 @@ export default {
         }))
     },
     onMouseDown() {
-      if (this.status !== STATUS.selecting)
+      if (this.status === STATUS.normal)
         this.startDraw()
+      else if (this.status === STATUS.selecting) {
+        this.status = STATUS.moving
+        this.drawLayer.removeChildren()
+      }
     },
     onMouseUp() {
-      if (this.status !== STATUS.selecting)
+      if (this.status === STATUS.drawing)
         this.stopDraw()
     },
     startDraw() {
