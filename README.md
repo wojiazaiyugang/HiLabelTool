@@ -1,24 +1,10 @@
-# test
+图片标注工具HiLabelTool
 
-## Project setup
-```
-yarn install
-```
+![](./public/gifs/1.gif)
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
+支持的功能
+1. 标注bounding bbox，支持选择、缩放
+2. 导出标注结果
 
-### Compiles and minifies for production
-```
-yarn build
-```
-
-### Lints and fixes files
-```
-yarn lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+开发中的功能
+1. 标签

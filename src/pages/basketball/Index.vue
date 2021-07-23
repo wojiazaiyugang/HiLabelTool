@@ -11,11 +11,11 @@
           <i class="iconfont icon-shizixian-"></i>
           十字线
         </div>
-        <div class="button" @click="labelImage(currentImageIndex - 1)">
+        <div class="button" @click="labelPreviousImage()">
           <i class="iconfont icon-shangyige"></i>
           上一个
         </div>
-        <div class="button" @click="saveLabelResult">
+        <div class="button" @click="labelNextImage()">
           <i class="iconfont icon-xiayige"></i>
           下一个
         </div>
@@ -35,13 +35,16 @@
       <div id="stage" style="flex: 1;border: 1px solid black;overflow: hidden">
       </div>
       <div style="width: 80px;background: rgba(75,58,58,0.07)">
-        标注个数{{ labelBBoxCount }}
-        当前帧{{ currentImageIndex }}
-        状态{{ status }}
+
       </div>
     </div>
     <div
       style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);border-top: 1px solid black;overflow-y: auto">
+      已经标注bbox个数：{{ labelBBoxCount }} 标注进度：{{ currentImageIndex }}/{{images.length}}
+      <br />
+      当前状态；{{ status }} {{pointerPosition}}
+      <br />
+      {{log}}
       <!--      <img v-for="(image, index) in images" :key="image" :src="image" style="height: 100%;width: auto">-->
     </div>
     <el-dialog title="设置" :visible.sync="settingDialogVisible" fullscreen>
@@ -67,12 +70,14 @@ import path from "path"
 import Konva from "konva"
 import {remote} from "electron"
 import * as fs from "fs"
+import fse from "fs-extra"
 
 import {routeTo} from "@/utils/router"
 
 const STATUS = { // 状态
   normal: "正常状态",
   drawing: "正在绘图",
+  selecting: "选择了某个图形",
   hovering: "悬停在某个图形上",
   moving: "正在移动某个图形",
   resizing: "正在resize某个图形",
@@ -133,6 +138,11 @@ export default {
         height: null
       },
       selectedLabelRect: null, // 选择的label rect
+      pointerPosition: { // 当前鼠标在原图上的位置
+        x: null,
+        y: null,
+      },
+      log: "", // 日志
     }
   },
   methods: {
@@ -143,7 +153,6 @@ export default {
       })
       if (folders) this.setting.inputFolder = folders[0]
     },
-
     deleteLabelRect() {
       this.stage.find("Transformer").forEach(t => t.destroy())
       this.selectedLabelRect && this.selectedLabelRect.destroy()
@@ -156,18 +165,29 @@ export default {
       this.labelImage(0)
     },
     /**
-     * 加载下一张图片
+     * 标注上一张图片
+     */
+    labelPreviousImage() {
+      this.saveLabelResult()
+      if (this.currentImageIndex - 1 < 0) {
+        return
+      }
+      this.labelImage(this.currentImageIndex - 1)
+    },
+    /**
+     * 标注 下一张图片
+     */
+    labelNextImage() {
+      this.saveLabelResult()
+      if (this.currentImageIndex + 1 >= this.images.length) {
+        return
+      }
+      this.labelImage(this.currentImageIndex + 1)
+    },
+    /**
+     * 标注某一张图片
      */
     labelImage(index) {
-      if (index < 0) {
-        this.currentImageIndex = 0
-        return
-      }
-      if (index === this.images.length) {
-        this.currentImageIndex = this.images.length - 1
-        return
-      }
-      this.saveLabelResult()
       this.labelLayer.removeChildren()
       this.imageLayer.removeChildren()
       this.currentImageIndex = index
@@ -177,7 +197,6 @@ export default {
         width: imageObj.width,
         height: imageObj.height
       }
-      // console.log(imageObj.size())
       let image = new Konva.Image({
         image: imageObj,
         width: this.container.offsetWidth,
@@ -185,13 +204,28 @@ export default {
       })
       this.imageLayer.add(image)
     },
+    /**
+     * 保存当前帧标注结果
+     */
     saveLabelResult() {
-      let rect = this.labelLayer.getChildren()[0]
-      if (rect) {
-        let [ltX, ltY] = [parseInt(rect.position().x * this.scaleX), parseInt(rect.position().y * this.scaleY)]
-        let [rbX, rbY] = [ltX + parseInt(rect.width() * this.scaleX * rect.scaleX()), ltY + parseInt(rect.height() * this.scaleY * rect.scaleY())]
-        console.log(ltX, ltY, rbX, rbY, rect.scaleX(), rect.scaleY())
-      }
+      let result = []
+      let labelResults = this.labelLayer.getChildren().filter(child => child.hasName(LABEL_RECT_NAME))
+      if (labelResults.length === 0) return
+      labelResults.forEach(labelResult => {
+        let [ltX, ltY] = [Math.round(labelResult.position().x * this.scaleX), Math.round(labelResult.position().y * this.scaleY)]
+        let [rbX, rbY] = [ltX + Math.round(labelResult.width() * this.scaleX * labelResult.scaleX()), ltY + Math.round(labelResult.height() * this.scaleY * labelResult.scaleY())]
+        result.push({
+          ltX: ltX,
+          ltY: ltY,
+          rbX: rbX,
+          rbY: rbY
+        })
+      })
+      let inputFilePath = this.images[this.currentImageIndex]
+      let outputFileName = inputFilePath.substring(inputFilePath.lastIndexOf(path.sep)+1)
+      let outputFilePath = `${path.join(this.setting.outputFolder, outputFileName)}.json`
+      fse.outputJsonSync(outputFilePath, result)
+      this.log = `标注结果保存到${outputFilePath}`
     },
     /**
      * 初始化konva
@@ -200,7 +234,7 @@ export default {
       this.stage = new Konva.Stage({
         container: this.containerID,
         width: this.container.offsetWidth,
-        height: this.container.offsetHeight
+        height: this.container.offsetHeight,
       })
       this.stage.on("mouseenter", () => this.onMouseEnter())
       this.stage.on("mouseleave", () => this.onMouseLeave())
@@ -236,26 +270,13 @@ export default {
      * 在图片上移动的事件
      */
     onMouseMove() {
+      this.pointerPosition = {
+        x: Math.round(this.stage.getRelativePointerPosition().x * this.scaleX),
+        y: Math.round(this.stage.getRelativePointerPosition().y * this.scaleY)
+      }
       this.drawLayer.removeChildren()
       if (this.setting.showCrossHair && this.status === STATUS.normal) {
         let [x, y] = [this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y]
-        let label = new Konva.Label({
-          x: x + 10,
-          y: y - 10,
-          opacity: 0.7
-        })
-        label.add(
-          new Konva.Tag({
-            fill: "#000"
-          }),
-          new Konva.Text({
-            text: `(${parseInt(x * this.scaleX)},${parseInt(y * this.scaleY)})`,
-            fontFamily: "Calibri",
-            fontSize: 18,
-            padding: 5,
-            fill: "#FFF"
-          })
-        )
         this.drawLayer.add(
           new Konva.Line({
             points: [0, y, this.stage.width(), y],
@@ -268,8 +289,7 @@ export default {
             stroke: "green",
             strokeWidth: 1,
             dash: [20, 5]
-          }),
-          label
+          })
         )
       }
       if (this.status === STATUS.drawing)
@@ -285,7 +305,7 @@ export default {
     onMouseDown() {
       if (this.status === STATUS.normal)
         this.startDraw()
-      else if (this.status === STATUS.hovering) {
+      else if (this.status === STATUS.selecting) {
         this.status = STATUS.moving
         this.drawLayer.removeChildren()
       }
@@ -296,6 +316,7 @@ export default {
     onClick(e) {
       this.stage.find("Transformer").forEach(t => t.destroy())
       if (!e.target.hasName(LABEL_RECT_NAME)) {
+        this.status = STATUS.normal
         this.selectedLabelRect = null
         return
       }
@@ -303,6 +324,7 @@ export default {
       this.labelLayer.add(transFormer)
       this.selectedLabelRect = e.target
       transFormer.nodes([e.target])
+      this.status = STATUS.selecting
     },
     onMouseUp() {
       if (this.status === STATUS.drawing)
@@ -322,7 +344,8 @@ export default {
         stroke: "#000",
         strokeWidth: 2,
         draggable: true,
-        name: LABEL_RECT_NAME
+        name: LABEL_RECT_NAME,
+        strokeScaleEnabled: false
       })
       if (rect.width() < 20) return // 太小的bbox不要
       rect.on("mouseenter", () => {
@@ -334,7 +357,8 @@ export default {
       rect.on("mouseleave", () => {
         if (this.status !== STATUS.drawing) {
           this.stage.container().style.cursor = "crosshair"
-          this.status = STATUS.normal
+          if (this.status === STATUS.hovering)
+            this.status = STATUS.normal
         }
       })
       rect.on("transformstart", () => {
