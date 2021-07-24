@@ -31,20 +31,23 @@
           <i class="iconfont icon-shezhi"></i>
           设置
         </div>
+        <div class="button" @click="test">
+          <i class="iconfont icon-ceshi"></i>
+          DEBUG
+        </div>
       </div>
-      <div id="stage" style="flex: 1;border: 1px solid black;overflow: hidden">
+      <div style="background: rgba(17,255,0,0.06);flex: 1;position: relative">
+        <div id="stage" style="width: 100%;height: 100%;position: absolute"></div>
       </div>
-      <div style="width: 80px;background: rgba(75,58,58,0.07)">
-
-      </div>
+      <div style="width: 80px;background: rgba(75,58,58,0.07)"></div>
     </div>
     <div
-      style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);border-top: 1px solid black;overflow-y: auto">
-      已经标注bbox个数：{{ labelBBoxCount }} 标注进度：{{ currentImageIndex }}/{{images.length}}
-      <br />
-      当前状态；{{ status }} {{pointerPosition}}
-      <br />
-      {{log}}
+      style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);overflow-y: auto">
+      已经标注bbox个数：{{ labelBBoxCount }} 标注进度：{{ currentImageIndex }}/{{ images.length }}
+      <br/>
+      当前状态；{{ status }} {{ pointerPosition }}
+      <br/>
+      {{ log }}
       <!--      <img v-for="(image, index) in images" :key="image" :src="image" style="height: 100%;width: auto">-->
     </div>
     <el-dialog title="设置" :visible.sync="settingDialogVisible" fullscreen>
@@ -91,7 +94,7 @@ export default {
       return document.getElementById(this.containerID)
     },
     labelBBoxCount() {
-      return this.labelLayer ? this.labelLayer.children.filter(child => child.hasName(LABEL_RECT_NAME)).length : 0
+      return this.labelGroup ? this.labelGroup.children.filter(child => child.hasName(LABEL_RECT_NAME)).length : 0
     },
     /**
      * x方向缩放比例
@@ -117,9 +120,10 @@ export default {
       containerID: "stage", //div的id
       setTimeoutTimer: null, //
       stage: null, // konva的stage
-      imageLayer: null, // 图片层
-      labelLayer: null, // 画的标签层
-      drawLayer: null, // 正在画的层
+      layer: null, //
+      imageGroup: null, // 图片层
+      labelGroup: null, // 画的标签层
+      drawGroup: null, // 正在画的层
       imageURL: "C:\\Users\\\\\\wojiazaiyugang\\Desktop\\1\\00001.jpg",
       drawing: false, // 当前正在绘画
       drawStartPoint: { // 绘画的起始点
@@ -143,6 +147,10 @@ export default {
         y: null,
       },
       log: "", // 日志
+      initStageSize: {
+        width: null,
+        height: null
+      }
     }
   },
   methods: {
@@ -188,8 +196,8 @@ export default {
      * 标注某一张图片
      */
     labelImage(index) {
-      this.labelLayer.removeChildren()
-      this.imageLayer.removeChildren()
+      this.labelGroup.removeChildren()
+      this.imageGroup.removeChildren()
       this.currentImageIndex = index
       let imageObj = new Image()
       imageObj.src = this.images[this.currentImageIndex]
@@ -202,14 +210,14 @@ export default {
         width: this.container.offsetWidth,
         height: this.container.offsetHeight
       })
-      this.imageLayer.add(image)
+      this.imageGroup.add(image)
     },
     /**
      * 保存当前帧标注结果
      */
     saveLabelResult() {
       let result = []
-      let labelResults = this.labelLayer.getChildren().filter(child => child.hasName(LABEL_RECT_NAME))
+      let labelResults = this.labelGroup.getChildren().filter(child => child.hasName(LABEL_RECT_NAME))
       if (labelResults.length === 0) return
       labelResults.forEach(labelResult => {
         let [ltX, ltY] = [Math.round(labelResult.position().x * this.scaleX), Math.round(labelResult.position().y * this.scaleY)]
@@ -222,7 +230,7 @@ export default {
         })
       })
       let inputFilePath = this.images[this.currentImageIndex]
-      let outputFileName = inputFilePath.substring(inputFilePath.lastIndexOf(path.sep)+1)
+      let outputFileName = inputFilePath.substring(inputFilePath.lastIndexOf(path.sep) + 1)
       let outputFilePath = `${path.join(this.setting.outputFolder, outputFileName)}.json`
       fse.outputJsonSync(outputFilePath, result)
       this.log = `标注结果保存到${outputFilePath}`
@@ -236,30 +244,36 @@ export default {
         width: this.container.offsetWidth,
         height: this.container.offsetHeight,
       })
+      this.initStageSize = {
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight,
+      }
       this.stage.on("mouseenter", () => this.onMouseEnter())
       this.stage.on("mouseleave", () => this.onMouseLeave())
       this.stage.on("mousemove", () => this.onMouseMove())
       this.stage.on("mousedown", () => this.onMouseDown())
       this.stage.on("mouseup", () => this.onMouseUp())
       this.stage.on("click", ($event) => this.onClick($event))
-      this.imageLayer = new Konva.Layer()
-      this.labelLayer = new Konva.Layer()
-      this.drawLayer = new Konva.Layer()
-      this.stage.add(this.imageLayer, this.labelLayer, this.drawLayer)
+      this.layer = new Konva.Layer()
+      this.imageGroup = new Konva.Group()
+      this.labelGroup = new Konva.Group()
+      this.drawGroup = new Konva.Group()
+      this.layer.add(this.imageGroup, this.labelGroup, this.drawGroup)
+      this.stage.add(this.layer)
     },
     /**
      * resize要标注的图片
      */
     resizeImage() {
-      let scale = this.container.offsetWidth / this.stage.width()
-      // this.setTimeoutTimer && clearTimeout(this.setTimeoutTimer)
-      // this.setTimeoutTimer = setTimeout(() => {
-      this.stage.width(this.stage.width() * scale)
-      this.stage.height(this.stage.height() * scale)
-      this.stage.scale({x: scale, y: scale})
-      this.imageLayer.scale({x: scale, y: scale})
-      this.imageLayer.draw()
-      // }, 50)
+      let scaleX = this.container.offsetWidth / this.initStageSize.width
+      let scaleY = this.container.offsetHeight / this.initStageSize.height
+      this.stage.width(this.container.offsetWidth)
+      this.stage.height(this.container.offsetHeight)
+      this.stage.scale({x: scaleX, y:scaleY})
+
+    },
+    test() {
+      this.stage.scale({x: this.stage.scaleX() + 0.1, y: this.stage.scaleY() + 0.1})
     },
     onMouseEnter() {
       this.status = STATUS.normal
@@ -267,7 +281,7 @@ export default {
     },
     onMouseLeave() {
       this.status = STATUS.normal
-      this.drawLayer.removeChildren()
+      this.drawGroup.removeChildren()
       this.stage.container().style.cursor = "default"
     },
     /**
@@ -278,10 +292,10 @@ export default {
         x: Math.round(this.stage.getRelativePointerPosition().x * this.scaleX),
         y: Math.round(this.stage.getRelativePointerPosition().y * this.scaleY)
       }
-      this.drawLayer.removeChildren()
+      this.drawGroup.removeChildren()
       if (this.setting.showCrossHair && this.status === STATUS.normal) {
         let [x, y] = [this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y]
-        this.drawLayer.add(
+        this.drawGroup.add(
           new Konva.Line({
             points: [0, y, this.stage.width(), y],
             stroke: "green",
@@ -297,7 +311,7 @@ export default {
         )
       }
       if (this.status === STATUS.drawing)
-        this.drawLayer.add(new Konva.Rect({
+        this.drawGroup.add(new Konva.Rect({
           x: this.drawStartPoint.x,
           y: this.drawStartPoint.y,
           width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
@@ -311,7 +325,7 @@ export default {
         this.startDraw()
       else if (this.status === STATUS.selecting) {
         this.status = STATUS.moving
-        this.drawLayer.removeChildren()
+        this.drawGroup.removeChildren()
       }
     },
     /**
@@ -325,7 +339,7 @@ export default {
         return
       }
       let transFormer = new Konva.Transformer()
-      this.labelLayer.add(transFormer)
+      this.labelGroup.add(transFormer)
       this.selectedLabelRect = e.target
       transFormer.nodes([e.target])
       this.status = STATUS.selecting
@@ -371,7 +385,7 @@ export default {
       rect.on("transformend", () => {
         this.status = STATUS.normal
       })
-      this.labelLayer.add(rect)
+      this.labelGroup.add(rect)
     }
   }
 }
@@ -420,6 +434,11 @@ export default {
     .el-dialog__body {
       flex: 1;
     }
+  }
+
+  .el-form-item__content {
+    display: flex;
+    flex-wrap: nowrap;
   }
 }
 </style>
