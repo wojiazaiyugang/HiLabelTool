@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-button @click="routeTo('basketball')">标注篮球</el-button>
+    <el-button @click="routeTo('basketball')">标注bbox</el-button>
   </div>
 </template>
 

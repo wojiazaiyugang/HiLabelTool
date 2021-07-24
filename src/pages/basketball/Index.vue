@@ -120,7 +120,7 @@ export default {
       imageLayer: null, // 图片层
       labelLayer: null, // 画的标签层
       drawLayer: null, // 正在画的层
-      imageURL: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1\\00001.jpg",
+      imageURL: "C:\\Users\\\\\\wojiazaiyugang\\Desktop\\1\\00001.jpg",
       drawing: false, // 当前正在绘画
       drawStartPoint: { // 绘画的起始点
         x: null,
@@ -128,8 +128,8 @@ export default {
       },
       setting: { // 配置
         showCrossHair: false, // 是否显示辅助十字线
-        inputFolder: "C:\\Users\\wojia\\Desktop\\1", // 输入数据文件夹
-        outputFolder: "C:\\Users\\wojia\\Desktop", // 输出文件夹
+        inputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
+        outputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop", // 输出文件夹
       },
       images: [], // 图片列表
       currentImageIndex: -1, // 当前的index
@@ -251,11 +251,15 @@ export default {
      * resize要标注的图片
      */
     resizeImage() {
-      this.setTimeoutTimer && clearTimeout(this.setTimeoutTimer)
-      this.setTimeoutTimer = setTimeout(() => {
-        this.stage.width(this.container.offsetWidth - 2)
-        this.stage.height(this.container.offsetHeight - 2)
-      }, 50)
+      let scale = this.container.offsetWidth / this.stage.width()
+      // this.setTimeoutTimer && clearTimeout(this.setTimeoutTimer)
+      // this.setTimeoutTimer = setTimeout(() => {
+      this.stage.width(this.stage.width() * scale)
+      this.stage.height(this.stage.height() * scale)
+      this.stage.scale({x: scale, y: scale})
+      this.imageLayer.scale({x: scale, y: scale})
+      this.imageLayer.draw()
+      // }, 50)
     },
     onMouseEnter() {
       this.status = STATUS.normal

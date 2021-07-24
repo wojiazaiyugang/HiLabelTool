@@ -15,7 +15,6 @@ async function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 720,
-    resizable: false,
     webPreferences: {
       enableRemoteModule: true,
       // Use pluginOptions.nodeIntegration, leave this alone
