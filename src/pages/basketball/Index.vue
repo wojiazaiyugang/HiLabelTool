@@ -97,7 +97,7 @@ export default {
       return this.labelGroup ? this.labelGroup.children.filter(child => child.hasName(LABEL_RECT_NAME)).length : 0
     },
     /**
-     * x方向缩放比例
+     * 可视区域和原始图片的缩放比例
      */
     scaleX() {
       return this.currentImageSize.width / this.container.offsetWidth
@@ -193,6 +193,19 @@ export default {
       this.labelImage(this.currentImageIndex + 1)
     },
     /**
+     * stage适应container
+     */
+    fitStageToContainer() {
+      this.stage.width(this.container.offsetWidth)
+      this.stage.height(this.container.offsetHeight)
+      this.initStageSize = {
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight
+      }
+      this.stage.scale({x: 1, y: 1})
+      this.stage.position({x: 0, y:0})
+    },
+    /**
      * 标注某一张图片
      */
     labelImage(index) {
@@ -211,6 +224,7 @@ export default {
         height: this.container.offsetHeight
       })
       this.imageGroup.add(image)
+      this.fitStageToContainer()
     },
     /**
      * 保存当前帧标注结果
@@ -254,6 +268,7 @@ export default {
       this.stage.on("mousedown", () => this.onMouseDown())
       this.stage.on("mouseup", () => this.onMouseUp())
       this.stage.on("click", ($event) => this.onClick($event))
+      this.stage.on("wheel", ($event) => this.onWheel($event))
       this.layer = new Konva.Layer()
       this.imageGroup = new Konva.Group()
       this.labelGroup = new Konva.Group()
@@ -269,8 +284,7 @@ export default {
       let scaleY = this.container.offsetHeight / this.initStageSize.height
       this.stage.width(this.container.offsetWidth)
       this.stage.height(this.container.offsetHeight)
-      this.stage.scale({x: scaleX, y:scaleY})
-
+      this.stage.scale({x: scaleX, y: scaleY})
     },
     test() {
       this.stage.scale({x: this.stage.scaleX() + 0.1, y: this.stage.scaleY() + 0.1})
@@ -288,6 +302,7 @@ export default {
      * 在图片上移动的事件
      */
     onMouseMove() {
+      console.log("move")
       this.pointerPosition = {
         x: Math.round(this.stage.getRelativePointerPosition().x * this.scaleX),
         y: Math.round(this.stage.getRelativePointerPosition().y * this.scaleY)
@@ -329,6 +344,37 @@ export default {
       }
     },
     /**
+     * @param {MouseEvent} e
+     */
+    onWheel(e) {
+      // this.stage.position({
+      //   x: this.stage.position().x + 1,
+      //   y: this.stage.position().y + 1
+      // })
+      e.evt.preventDefault()
+      let pointer = this.stage.getRelativePointerPosition()
+      let step = 0.1
+      let oldX = this.stage.scaleX() * pointer.x
+      let oldY = this.stage.scaleY() * pointer.y
+      if (e.evt.wheelDelta < 0) {
+        this.stage.scale({
+          x: this.stage.scaleX() - step,
+          y: this.stage.scaleY() - step,
+        })
+      } else {
+        this.stage.scale({
+          x: this.stage.scaleX() + step,
+          y: this.stage.scaleY() + step,
+        })
+      }
+      let xOffset = oldX - (this.stage.scaleX() * pointer.x)
+      let yOffset = oldY - (this.stage.scaleY() * pointer.y)
+      this.stage.position({
+        x: this.stage.position().x + xOffset,
+        y: this.stage.position().y + yOffset
+      })
+    },
+    /**
      * 舞台点击事件，用于添加和删除transformer
      */
     onClick(e) {
@@ -338,7 +384,7 @@ export default {
         this.selectedLabelRect = null
         return
       }
-      let transFormer = new Konva.Transformer()
+      let transFormer = new Konva.Transformer({rotateEnabled: false})
       this.labelGroup.add(transFormer)
       this.selectedLabelRect = e.target
       transFormer.nodes([e.target])
