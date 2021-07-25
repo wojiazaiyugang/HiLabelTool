@@ -62,11 +62,11 @@
       <el-form :model="setting" label-width="120px">
         <el-form-item label="数据目录">
           <el-input disabled v-model="setting.inputFolder" style="width: 700px"></el-input>
-          <el-button @click="selectFolder">选择</el-button>
+          <el-button @click="selectInputFolder">选择</el-button>
         </el-form-item>
         <el-form-item label="生成结果目录">
           <el-input disabled v-model="setting.outputFolder" style="width: 700px"></el-input>
-          <el-button @click="selectFolder">选择</el-button>
+          <el-button @click="selectOutputFolder">选择</el-button>
         </el-form-item>
       </el-form>
       <div slot="footer">
@@ -184,11 +184,23 @@ export default {
   },
   methods: {
     routeTo: path => routeTo(path),
+    /**
+     * 选择文件夹
+     * @return {null | string}
+     */
     selectFolder() {
       let folders = remote.dialog.showOpenDialogSync({
         properties: ["openDirectory"]
       })
-      if (folders) this.setting.inputFolder = folders[0]
+      if (folders) return folders[0]
+    },
+    selectInputFolder() {
+      let folder = this.selectFolder()
+      if (folder) this.setting.inputFolder = folder
+    },
+    selectOutputFolder() {
+      let folder = this.selectFolder()
+      if (folder) this.setting.outputFolder = folder
     },
     deleteLabelRect() {
       this.stage.find("Transformer").forEach(t => t.destroy())
