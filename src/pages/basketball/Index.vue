@@ -31,19 +31,27 @@
           <i class="iconfont icon-shezhi"></i>
           设置
         </div>
-        <div class="button" @click="test">
-          <i class="iconfont icon-ceshi"></i>
-          DEBUG
-        </div>
+<!--        <div class="button" @click="changeStay">-->
+<!--          <i class="iconfont icon-ceshi"></i>-->
+<!--          DEBUG-->
+<!--        </div>-->
       </div>
-      <div style="background: rgba(17,255,0,0.06);flex: 1;position: relative">
+      <div style="background: rgba(51,81,116,0.56);flex: 1;position: relative">
         <div id="stage" style="width: 100%;height: 100%;position: absolute"></div>
       </div>
-      <div style="width: 80px;background: rgba(75,58,58,0.07)"></div>
+      <div style="width: 160px;display: flex;flex-direction: column;background: rgba(75,58,58,0.07)">
+        <div style="height: 40%;border-bottom: 1px solid black">标签区域</div>
+        <div style="flex: 1;display: flex;flex-direction: column">
+          <div v-for="(labelRect, index) in labelRects" class="label-rect" :key="index" @click="changeStay(labelRect)">
+            {{ index }} {{ getBBox(labelRect) | formatBBox }} <br />
+            {{ labelRect.stay ? '保留': '不保留' }}
+          </div>
+        </div>
+      </div>
     </div>
     <div
       style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);overflow-y: auto">
-      已经标注bbox个数：{{ labelBBoxCount }} 标注进度：{{ currentImageIndex }}/{{ images.length }}
+      已经标注bbox个数：{{ labelRects.length }} 标注进度：{{ currentImageIndex }}/{{ images.length }}
       <br/>
       当前状态；{{ status }} {{ pointerPosition }}
       <br/>
@@ -89,12 +97,32 @@ const LABEL_RECT_NAME = "LABEL_RECT_NAME" // 标注的bbox的名字
 
 export default {
   name: "Index",
+  filters: {
+    formatBBox: bbox => `(${bbox.ltX},${bbox.ltY},${bbox.rbX},${bbox.rbY})`
+  },
   computed: {
+    /**
+     * 当前正在标注的图片完整路径
+     * @return {String}
+     */
+    imagePath() {
+      return this.images[this.currentImageIndex]
+    },
+    /**
+     * 当前正在标注的图片的文件名
+     */
+    imageName() {
+      return this.imagePath.substring(this.imagePath.lastIndexOf(path.sep) + 1)
+    },
+    /**
+     * konva的rect
+     */
+    labelRects() {
+      if (!this.labelGroup) return []
+      return this.labelGroup.children.filter(child => child.hasName(LABEL_RECT_NAME))
+    },
     container() {
       return document.getElementById(this.containerID)
-    },
-    labelBBoxCount() {
-      return this.labelGroup ? this.labelGroup.children.filter(child => child.hasName(LABEL_RECT_NAME)).length : 0
     },
     /**
      * 可视区域和原始图片的缩放比例
@@ -133,7 +161,7 @@ export default {
       setting: { // 配置
         showCrossHair: false, // 是否显示辅助十字线
         inputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
-        outputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop", // 输出文件夹
+        outputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\output", // 输出文件夹
       },
       images: [], // 图片列表
       currentImageIndex: -1, // 当前的index
@@ -150,7 +178,8 @@ export default {
       initStageSize: {
         width: null,
         height: null
-      }
+      },
+      stayLabelRects: [], // 保存到下一帧的label rect
     }
   },
   methods: {
@@ -176,7 +205,7 @@ export default {
      * 标注上一张图片
      */
     labelPreviousImage() {
-      this.saveLabelResult()
+      this.saveLabelRect()
       if (this.currentImageIndex - 1 < 0) {
         return
       }
@@ -186,7 +215,7 @@ export default {
      * 标注 下一张图片
      */
     labelNextImage() {
-      this.saveLabelResult()
+      this.saveLabelRect()
       if (this.currentImageIndex + 1 >= this.images.length) {
         return
       }
@@ -203,50 +232,63 @@ export default {
         height: this.container.offsetHeight
       }
       this.stage.scale({x: 1, y: 1})
-      this.stage.position({x: 0, y:0})
+      this.stage.position({x: 0, y: 0})
     },
     /**
      * 标注某一张图片
      */
     labelImage(index) {
+      let stayRects = this.labelRects.filter(labelRect => labelRect.stay)
       this.labelGroup.removeChildren()
+      stayRects.forEach(labelRect => this.labelGroup.add(labelRect))
       this.imageGroup.removeChildren()
       this.currentImageIndex = index
       let imageObj = new Image()
-      imageObj.src = this.images[this.currentImageIndex]
-      this.currentImageSize = {
-        width: imageObj.width,
-        height: imageObj.height
+      imageObj.src = this.imagePath
+      imageObj.onload = () => {
+        this.currentImageSize = {
+          width: imageObj.width,
+          height: imageObj.height
+        }
+        let image = new Konva.Image({
+          image: imageObj,
+          width: this.container.offsetWidth,
+          height: this.container.offsetHeight
+        })
+        this.imageGroup.add(image)
+        this.fitStageToContainer()
       }
-      let image = new Konva.Image({
-        image: imageObj,
-        width: this.container.offsetWidth,
-        height: this.container.offsetHeight
-      })
-      this.imageGroup.add(image)
-      this.fitStageToContainer()
+    },
+    /**
+     * 计算bbox
+     * @param {Konva.Rect} rect
+     * @return {Object}
+     */
+    getBBox(rect) {
+      let [ltX, ltY] = [Math.round(rect.position().x * this.scaleX), Math.round(rect.position().y * this.scaleY)]
+      let [rbX, rbY] = [ltX + Math.round(rect.width() * this.scaleX * rect.scaleX()), ltY + Math.round(rect.height() * this.scaleY * rect.scaleY())]
+      return {
+        ltX: ltX,
+        ltY: ltY,
+        rbX: rbX,
+        rbY: rbY
+      }
     },
     /**
      * 保存当前帧标注结果
      */
-    saveLabelResult() {
-      let result = []
-      let labelResults = this.labelGroup.getChildren().filter(child => child.hasName(LABEL_RECT_NAME))
-      if (labelResults.length === 0) return
-      labelResults.forEach(labelResult => {
-        let [ltX, ltY] = [Math.round(labelResult.position().x * this.scaleX), Math.round(labelResult.position().y * this.scaleY)]
-        let [rbX, rbY] = [ltX + Math.round(labelResult.width() * this.scaleX * labelResult.scaleX()), ltY + Math.round(labelResult.height() * this.scaleY * labelResult.scaleY())]
-        result.push({
-          ltX: ltX,
-          ltY: ltY,
-          rbX: rbX,
-          rbY: rbY
-        })
-      })
-      let inputFilePath = this.images[this.currentImageIndex]
-      let outputFileName = inputFilePath.substring(inputFilePath.lastIndexOf(path.sep) + 1)
-      let outputFilePath = `${path.join(this.setting.outputFolder, outputFileName)}.json`
+    saveLabelRect() {
+      this.log = ""
+      if (this.labelRects.length === 0) return
+      let result = {
+        fileName: this.imageName,
+        filePath: this.imagePath,
+        bboxes: []
+      }
+      this.labelRects.forEach(labelRect => result.bboxes.push(this.getBBox(labelRect)))
+      let outputFilePath = `${path.join(this.setting.outputFolder, this.imageName)}.json`
       fse.outputJsonSync(outputFilePath, result)
+      console.log(result.bboxes)
       this.log = `标注结果保存到${outputFilePath}`
     },
     /**
@@ -286,8 +328,8 @@ export default {
       this.stage.height(this.container.offsetHeight)
       this.stage.scale({x: scaleX, y: scaleY})
     },
-    test() {
-      this.stage.scale({x: this.stage.scaleX() + 0.1, y: this.stage.scaleY() + 0.1})
+    changeStay(labelRect) {
+      labelRect.stay = !labelRect.stay
     },
     onMouseEnter() {
       this.status = STATUS.normal
@@ -302,7 +344,6 @@ export default {
      * 在图片上移动的事件
      */
     onMouseMove() {
-      console.log("move")
       this.pointerPosition = {
         x: Math.round(this.stage.getRelativePointerPosition().x * this.scaleX),
         y: Math.round(this.stage.getRelativePointerPosition().y * this.scaleY)
@@ -429,6 +470,7 @@ export default {
         this.status = STATUS.resizing
       })
       rect.on("transformend", () => {
+        // console
         this.status = STATUS.normal
       })
       this.labelGroup.add(rect)
@@ -457,7 +499,6 @@ export default {
       flex-direction: column;
       align-items: center;
       padding: 5px;
-      white-space: nowrap;
 
       &:hover {
         cursor: pointer;
@@ -466,6 +507,17 @@ export default {
 
     .active {
       color: #55a532;
+    }
+  }
+
+  .label-rect {
+    background: #55a532;
+    padding: 5px;
+    color: white;
+    white-space: nowrap;
+
+    &:hover {
+      cursor: pointer;
     }
   }
 }
