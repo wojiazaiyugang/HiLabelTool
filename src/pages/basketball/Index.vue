@@ -31,20 +31,24 @@
           <i class="iconfont icon-shezhi"></i>
           设置
         </div>
-<!--        <div class="button" @click="changeStay">-->
-<!--          <i class="iconfont icon-ceshi"></i>-->
-<!--          DEBUG-->
-<!--        </div>-->
       </div>
       <div style="background: rgba(51,81,116,0.56);flex: 1;position: relative">
         <div id="stage" style="width: 100%;height: 100%;position: absolute"></div>
       </div>
       <div style="width: 160px;display: flex;flex-direction: column;background: rgba(75,58,58,0.07)">
-        <div style="height: 40%;border-bottom: 1px solid black">标签区域</div>
+        <div style="height: 40%;border-bottom: 1px solid black">
+          <div v-for="(label, index) in labels" :key="index" style="color: white" :style="{background: label.color}">
+            {{ index }} {{ label.name }}
+          </div>
+        </div>
         <div style="flex: 1;display: flex;flex-direction: column">
-          <div v-for="(labelRect, index) in labelRects" class="label-rect" :key="index" @click="changeStay(labelRect)">
-            {{ index }} {{ getBBox(labelRect) | formatBBox }} <br />
-            {{ labelRect.stay ? '保留': '不保留' }}
+          <div v-for="(labelRect, index) in labelRects" class="label-rect" :style="{background: labelRect.fill()}"
+               :key="index" @click="changeStay(index)">
+            {{ index }} {{ getBBox(labelRect) | formatBBox }} <br/>
+            {{labelRect.stay}}
+            {{ stay[index] ? '保留' : '不保留' }} {{ labelRect.fill() }}
+            <br />
+            {{stay}}
           </div>
         </div>
       </div>
@@ -56,7 +60,6 @@
       当前状态；{{ status }} {{ pointerPosition }}
       <br/>
       {{ log }}
-      <!--      <img v-for="(image, index) in images" :key="image" :src="image" style="height: 100%;width: auto">-->
     </div>
     <el-dialog title="设置" :visible.sync="settingDialogVisible" fullscreen>
       <el-form :model="setting" label-width="120px">
@@ -154,10 +157,7 @@ export default {
       drawGroup: null, // 正在画的层
       imageURL: "C:\\Users\\\\\\wojiazaiyugang\\Desktop\\1\\00001.jpg",
       drawing: false, // 当前正在绘画
-      drawStartPoint: { // 绘画的起始点
-        x: null,
-        y: null
-      },
+      drawStartPoint: {x: null, y: null},// 绘画的起始点
       setting: { // 配置
         showCrossHair: false, // 是否显示辅助十字线
         inputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
@@ -165,24 +165,22 @@ export default {
       },
       images: [], // 图片列表
       currentImageIndex: -1, // 当前的index
-      currentImageSize: { // 当前原视图像的size
-        width: null,
-        height: null
-      },
+      currentImageSize: {width: null, height: null},// 当前原视图像的size
       selectedLabelRect: null, // 选择的label rect
-      pointerPosition: { // 当前鼠标在原图上的位置
-        x: null,
-        y: null,
-      },
+      pointerPosition: {x: null, y: null,},// 当前鼠标在原图上的位置
       log: "", // 日志
-      initStageSize: {
-        width: null,
-        height: null
-      },
+      initStageSize: {width: null, height: null},
       stayLabelRects: [], // 保存到下一帧的label rect
+      labels: [{name: "label1", color: "#af3333"}, {name: "label1", color: "#5cb675"}], // 所有标签
+      stay: {}, // 某个rect是否要留到下一帧，key是rect的index
     }
   },
   methods: {
+    changeStay(index) {
+      console.log(this.stay)
+      this.stay[index] = !(this.stay[index] || false)
+      console.log(this.stay)
+    },
     routeTo: path => routeTo(path),
     /**
      * 选择文件夹
@@ -310,12 +308,8 @@ export default {
       this.stage = new Konva.Stage({
         container: this.containerID,
         width: this.container.offsetWidth,
-        height: this.container.offsetHeight,
-      })
-      this.initStageSize = {
-        width: this.container.offsetWidth,
-        height: this.container.offsetHeight,
-      }
+        height: this.container.offsetHeight,})
+      this.initStageSize = {width: this.container.offsetWidth, height: this.container.offsetHeight,}
       this.stage.on("mouseenter", () => this.onMouseEnter())
       this.stage.on("mouseleave", () => this.onMouseLeave())
       this.stage.on("mousemove", () => this.onMouseMove())
@@ -339,9 +333,6 @@ export default {
       this.stage.width(this.container.offsetWidth)
       this.stage.height(this.container.offsetHeight)
       this.stage.scale({x: scaleX, y: scaleY})
-    },
-    changeStay(labelRect) {
-      labelRect.stay = !labelRect.stay
     },
     onMouseEnter() {
       this.status = STATUS.normal
@@ -385,8 +376,7 @@ export default {
           width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
           height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
           stroke: "#000",
-          strokeWidth: 2
-        }))
+          strokeWidth: 2}))
     },
     onMouseDown() {
       if (this.status === STATUS.normal)
@@ -453,13 +443,14 @@ export default {
     },
     stopDraw() {
       this.status = STATUS.normal
+      let color = "rgba(31,25,25,0.89)"
       let rect = new Konva.Rect({
         x: this.drawStartPoint.x,
         y: this.drawStartPoint.y,
         width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
         height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
-        stroke: "#000",
-        strokeWidth: 2,
+        fill: color,
+        opacity: 0.1,
         draggable: true,
         name: LABEL_RECT_NAME,
         strokeScaleEnabled: false
@@ -482,7 +473,6 @@ export default {
         this.status = STATUS.resizing
       })
       rect.on("transformend", () => {
-        // console
         this.status = STATUS.normal
       })
       this.labelGroup.add(rect)
@@ -523,7 +513,6 @@ export default {
   }
 
   .label-rect {
-    background: #55a532;
     padding: 5px;
     color: white;
     white-space: nowrap;
