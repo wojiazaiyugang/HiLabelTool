@@ -1,6 +1,7 @@
 <template>
-  <div>
+  <div style="border-top: 1px solid rgba(0,0,0,0.11)">
     <el-button @click="routeTo('basketball')">标注bbox</el-button>
+    <el-button @click="routeTo('classification2')">图片二分类</el-button>
   </div>
 </template>
 

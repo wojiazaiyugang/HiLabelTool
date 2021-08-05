@@ -25,6 +25,14 @@ async function createWindow() {
     }
   })
 
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{
+    label: "首页",
+    click: () => {
+      win.webContents.send("route", "/")
+    }
+  }]))
+
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
     await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
@@ -64,7 +72,6 @@ app.on("ready", async () => {
     }
   }
   createWindow()
-  Menu.setApplicationMenu(null)
 })
 
 // Exit cleanly on request from parent process in development mode.
