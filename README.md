@@ -6,5 +6,5 @@
 1. 标注bounding bbox，支持选择、缩放
 2. 导出标注结果
 
-开发中的功能
-1. 标签
+### 图片二分类
+![](./public/gifs/classification2.gif)

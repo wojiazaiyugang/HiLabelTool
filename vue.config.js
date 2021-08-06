@@ -58,6 +58,12 @@ module.exports = {
         "win": {
           "icon": "public/images/logo.ico"
         },
+        "mac": {
+          "icon": "public/images/logo.ico"
+        },
+        "linux": {
+          "icon": "public/images/logo.ico"
+        }
         //         "publish": [{
         //           "provider": "generic",
         //           "url": "http://static.highvenue.cn/"
