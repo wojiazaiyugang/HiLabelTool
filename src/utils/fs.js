@@ -1,4 +1,4 @@
-import {remote} from "electron"
+import * as remote from "@electron/remote"
 
 /**
  * 选择一个文件夹

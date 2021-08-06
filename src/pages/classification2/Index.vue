@@ -2,7 +2,7 @@
   <div class="classification2">
     2分类
     <el-dialog title="设置" :visible.sync="configDialogVisible" fullscreen>
-      <el-form :model="config" label-width="120px">
+      <el-form :model="config" label-width="120px" label-position="left">
         <el-form-item label="输入数据目录">
           <el-input disabled v-model="config.inputFolder" style="width: 700px"></el-input>
           <el-button @click="selectInputFolder">选择</el-button>
@@ -14,6 +14,11 @@
         <el-form-item label="移动原始图片">
           <el-tooltip content="标注完之后原始图片会被移动到目标文件夹而不是复制">
             <el-switch v-model="config.transfer"></el-switch>
+          </el-tooltip>
+        </el-form-item>
+        <el-form-item label="继续标注">
+          <el-tooltip content="已经标注过的图片不再标注">
+            <el-switch v-model="config.continue"></el-switch>
           </el-tooltip>
         </el-form-item>
       </el-form>
@@ -37,6 +42,7 @@ export default {
         inputFolder: "",
         outputFolder: "",
         transfer: false,
+        continue: true
       }
     }
   },
