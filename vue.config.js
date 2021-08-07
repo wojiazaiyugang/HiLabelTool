@@ -29,15 +29,14 @@ module.exports = {
     //   .loader("node-loader")
     //   .end()
   },
-  //   css: {
-  //     // css预设器配置项
-  //     loaderOptions: {
-  //       scss: {
-  //         // prependData: `@import "~@/assets/css/style.scss";@import "~@/assets/css/iconfont/iconfont.css";`
-  //         prependData: "@import \"~@/assets/css/style.scss\";"
-  //       },
-  //     },
-  //   },
+  css: {
+  // //     // css预设器配置项
+    loaderOptions: {
+      scss: {
+        additionalData: "@import \"~@/assets/css/global_style.scss\";"
+      },
+    },
+  },
   //   configureWebpack: {
   //     node: {
   //       process: true,
