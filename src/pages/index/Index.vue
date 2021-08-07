@@ -1,8 +1,13 @@
 <template>
-  <div style="border-top: 1px solid rgba(0,0,0,0.11)">
-    <el-button @click="routeTo('basketball')">标注bbox</el-button>
-    <el-button @click="routeTo('classification2')">图片二分类</el-button>
-    <el-button @click="routeTo('check-dataset')">校验数据集</el-button>
+  <div class="flex-center-page">
+    <div style="display: flex;flex-direction: column;align-items: flex-start">
+      <el-button @click="routeTo('basketball')">标注bbox</el-button>
+      <el-button @click="routeTo('classification2')" style="margin-top: 20px">图片二分类</el-button>
+      <div style="flex-direction: column;margin-top: 20px">
+        <el-button @click="routeTo('check-dataset')">校验数据集</el-button>
+        <div>通过<span class="link" @click="routeTo('dataset-introduction')">校验规则</span>对数据集进行校验</div>
+      </div>
+    </div>
   </div>
 </template>
 

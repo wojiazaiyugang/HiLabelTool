@@ -217,6 +217,7 @@ export default {
     labelPreviousImage() {
       this.saveLabelRect()
       if (this.currentImageIndex - 1 < 0) {
+        this.$message.info("没有上一张了")
         return
       }
       this.labelImage(this.currentImageIndex - 1)

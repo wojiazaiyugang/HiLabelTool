@@ -40,3 +40,8 @@
     cursor: pointer;
   }
 }
+
+// 防止相邻的两个button中间加了margin
+.el-button+.el-button {
+  margin-left: 0;
+}

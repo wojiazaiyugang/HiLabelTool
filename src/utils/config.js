@@ -17,7 +17,7 @@ export const CONFIG_TYPE = {
  * @param folder
  * @return {string}
  */
-const getDataSetConfigFile = folder => {
+export const getDataSetConfigFile = folder => {
   return path.join(folder, "config.json")
 }
 
