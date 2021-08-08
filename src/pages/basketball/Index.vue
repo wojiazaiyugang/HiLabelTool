@@ -6,8 +6,8 @@
           <i class="iconfont icon-juxing"></i>
           矩形
         </div>
-        <div class="button" :class="setting.showCrossHair ? 'active': ''"
-             @click="setting.showCrossHair = !setting.showCrossHair">
+        <div class="button" :class="showCrossHair ? 'active': ''"
+             @click="showCrossHair = !showCrossHair">
           <i class="iconfont icon-shizixian-"></i>
           十字线
         </div>
@@ -61,21 +61,6 @@
       <br/>
       {{ log }}
     </div>
-    <el-dialog title="设置" :visible.sync="settingDialogVisible" fullscreen>
-      <el-form :model="setting" label-width="120px">
-        <el-form-item label="数据目录">
-          <el-input disabled v-model="setting.inputFolder" style="width: 700px"></el-input>
-          <el-button @click="selectInputFolder">选择</el-button>
-        </el-form-item>
-        <el-form-item label="生成结果目录">
-          <el-input disabled v-model="setting.outputFolder" style="width: 700px"></el-input>
-          <el-button @click="selectOutputFolder">选择</el-button>
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button @click="this.loadDataFolder">确定</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -147,7 +132,6 @@ export default {
   data() {
     return {
       status: "", // 当前状态
-      settingDialogVisible: true, // 设置对话框可见性
       containerID: "stage", //div的id
       setTimeoutTimer: null, //
       stage: null, // konva的stage
@@ -158,8 +142,8 @@ export default {
       imageURL: "C:\\Users\\\\\\wojiazaiyugang\\Desktop\\1\\00001.jpg",
       drawing: false, // 当前正在绘画
       drawStartPoint: {x: null, y: null},// 绘画的起始点
+      showCrossHair: false, // 是否显示辅助十字线
       setting: { // 配置
-        showCrossHair: false, // 是否显示辅助十字线
         inputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
         outputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\output", // 输出文件夹
       },
@@ -194,7 +178,7 @@ export default {
     },
     selectInputFolder() {
       let folder = this.selectFolder()
-      if (folder) this.setting.inputFolder = folder
+      if (folder) this.config.inputFolder = folder
     },
     selectOutputFolder() {
       let folder = this.selectFolder()

@@ -25,6 +25,10 @@ let router = new Router({
     {
       path: "/dataset-introduction",
       component: require("@/pages/dataset-introduction/Index").default
+    },
+    {
+      path: "/config",
+      component: require("@/pages/config/Index").default
     }
   ]
 })

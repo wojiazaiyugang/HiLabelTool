@@ -2,14 +2,34 @@ import path from "path"
 
 import fse from "fs-extra"
 
+// 公共配置
+const COMMON_DEFAULT_CONFIG = {
+  inputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
+  outputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\output", // 输出文件夹
+  transfer: false, // 移动图片
+  continue: true, // 跳过已经标注的
+}
 /**
  * 配置文件类型
  * @type {Object}
  */
 export const CONFIG_TYPE = {
   classification2: {
-    key: "classification2",
-    description: "二分类，标注结果是json文件，key是文件名，value是类别，如{'input1.jpg': '正样本', 'input2.jpg': '负样本'}"
+    name: "数据二分类",
+    description: "数据二分类",
+    defaultConfig: Object.assign({}, COMMON_DEFAULT_CONFIG, {
+      type: "classification2",
+      negativeLabel: "", // 负样本标签
+      positiveLabel: "", // 正样本标签
+    }),
+  },
+  bbox: {
+    name: "bbox标注",
+    description: "多类别图片bounding box标注",
+    defaultConfig: Object.assign({}, COMMON_DEFAULT_CONFIG, {
+      type: "bbox",
+      showCrossHair: false, // 是否显示辅助十字线
+    }),
   }
 }
 /**

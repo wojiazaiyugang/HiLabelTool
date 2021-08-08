@@ -29,38 +29,6 @@
       {{currentIndex+1}}/{{images.length}}
       {{ log }}
     </div>
-    <el-dialog title="设置" :visible.sync="configDialogVisible" fullscreen>
-      <el-form :model="config" :rules="rules" ref="form" label-width="120px" label-position="left">
-        <el-form-item label="输入数据目录" prop="inputFolder">
-          <el-input v-model="config.inputFolder" style="width: 500px"></el-input>
-          <el-button @click="selectInputFolder">选择</el-button>
-        </el-form-item>
-        <el-form-item label="生成结果目录" prop="outputFolder">
-          <el-input v-model="config.outputFolder" style="width: 500px"></el-input>
-          <el-button @click="selectOutputFolder">选择</el-button>
-        </el-form-item>
-        <el-form-item label="正样本标签" prop="positiveLabel">
-          <el-input v-model="config.positiveLabel" style="width: 300px"></el-input>
-        </el-form-item>
-        <el-form-item label="负样本标签" prop="negativeLabel">
-          <el-input v-model="config.negativeLabel" style="width: 300px"></el-input>
-        </el-form-item>
-        <el-form-item label="移动原始图片">
-          <el-tooltip content="标注完之后原始图片会被移动到目标文件夹而不是复制">
-            <el-switch v-model="config.transfer"></el-switch>
-          </el-tooltip>
-        </el-form-item>
-        <el-form-item label="跳过已标注">
-          <el-tooltip content="已经标注过的图片不再标注">
-            <el-switch v-model="config.continue"></el-switch>
-          </el-tooltip>
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button @click="importConfig">加载配置</el-button>
-        <el-button @click="start">确定</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -68,9 +36,10 @@
 import fse from "fs-extra"
 import {getCurrentWindow} from "@electron/remote"
 import {register, unregisterAll} from "electron-localshortcut"
+import {mapState} from "vuex"
 
 import {copyFile, moveFile, readAllImage, selectFile, selectFolder, removeFile} from "@/utils/fs"
-import {CONFIG_TYPE, writeDataSetConfig} from "@/utils/config"
+import {writeDataSetConfig} from "@/utils/config"
 import {readDataSetResult, writeDataSetResult} from "@/utils/result"
 import path from "path"
 
@@ -83,6 +52,9 @@ const rules = {
 export default {
   name: "Index",
   computed: {
+    ...mapState({
+      config: state => state.config.config
+    }),
     // 当前正在分类的图片
     currentImage() {
       if (this.currentIndex >=0 && this.images.length > this.currentIndex) return path.join(this.config.inputFolder, this.images[this.currentIndex])
@@ -96,21 +68,19 @@ export default {
       return Object.values(this.result).filter(result => result === this.config.negativeLabel).length
     }
   },
+  mounted() {
+    this.images = readAllImage(this.config.inputFolder)
+    this.currentIndex = this.getNextIndex()
+    if (this.currentIndex >= this.images.length)
+      this.$message.info("该数据集已经标注完成")
+    this.addShortcut()
+  },
   destroyed() {
     this.removeShortcut()
   },
   data() {
     return {
       configDialogVisible: true, // 设置对话框可见性
-      config: {
-        type: CONFIG_TYPE.classification2,
-        inputFolder: "", // 输入文件夹
-        outputFolder: "", // 输出文件夹
-        transfer: false, // 移动图片
-        continue: true, // 跳过已经标注的
-        negativeLabel: "", // 负样本标签
-        positiveLabel: "", // 正样本标签
-      },
       rules,
       currentIndex: -1, // 当前index
       images: [], // 所有图片
@@ -135,21 +105,6 @@ export default {
     },
     async selectOutputFolder() {
       this.config.outputFolder = await selectFolder()
-    },
-    async start() {
-      try {
-        await this.$refs["form"].validate()
-      } catch (err) {
-        return
-      }
-      this.result = readDataSetResult(this.config.outputFolder)
-      writeDataSetConfig(this.config.outputFolder, this.config)
-      this.configDialogVisible = false
-      this.images = readAllImage(this.config.inputFolder)
-      this.currentIndex = this.getNextIndex()
-      if (this.currentIndex >= this.images.length)
-        this.$message.info("该数据集已经标注完成")
-      this.addShortcut()
     },
     async importConfig() {
       let file = await selectFile(["json"])

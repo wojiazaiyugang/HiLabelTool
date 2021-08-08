@@ -1,8 +1,9 @@
 "use strict"
 
-import { app, protocol, BrowserWindow, Menu } from "electron"
-import { createProtocol } from "vue-cli-plugin-electron-builder/lib"
-import installExtension, { VUEJS_DEVTOOLS } from "electron-devtools-installer"
+import {app, protocol, BrowserWindow, Menu} from "electron"
+import {createProtocol} from "vue-cli-plugin-electron-builder/lib"
+import installExtension, {VUEJS_DEVTOOLS} from "electron-devtools-installer"
+
 const isDevelopment = process.env.NODE_ENV !== "production"
 
 // 初始化remote模块
@@ -10,10 +11,10 @@ require("@electron/remote/main").initialize()
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
-  { scheme: "app", privileges: { secure: true, standard: true } }
+  {scheme: "app", privileges: {secure: true, standard: true}}
 ])
 
-async function createWindow() { 
+async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
     width: 1280,
@@ -34,7 +35,35 @@ async function createWindow() {
     click: () => {
       win.webContents.send("route", "/")
     }
-  }]))
+  },{
+    label: "标注",
+    submenu: [
+      {
+        label: "开始标注",
+        click: () => {
+          win.webContents.send("route", "/config")
+        }
+      }
+    ]
+  },
+  {
+    label: "数据集",
+    submenu: [
+      {
+        label: "校验数据集",
+        click: () => {
+          win.webContents.send("route", "/check-dataset")
+        }
+      },
+      {
+        label: "数据集说明",
+        click: () => {
+          win.webContents.send("route", "/dataset-introduction")
+        }
+      }
+    ]
+  },
+  ]))
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode

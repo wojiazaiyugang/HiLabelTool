@@ -1,17 +1,13 @@
 import Vue from "vue"
 import Vuex from "vuex"
 
+import config from "@/store/modules/config"
+import setting from "@/store/modules/setting"
+
 Vue.use(Vuex)
 
-const files = require.context("./modules", false, /\.js$/)
-let modules = {}
-
-files.keys().forEach(key => {
-  modules[key.replace(/(\.\/|\.js)/g, "")] = files(key).default
-})
-
 export default new Vuex.Store({
-  modules,
+  modules: {config, setting},
   plugins: [],
   strict: process.env.NODE_ENV !== "production"
 })
