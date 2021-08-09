@@ -6,13 +6,14 @@
         标签：{{config.negativeLabel }}<br/>
         {{ config.outputFolder }}<br/>
         已标注：{{negativeResultCount}}<br/>
-        快捷键：键盘左方向
+        快捷键：键盘下方向
       </div>
       <div style="width: 60%;display: flex;flex-direction: column;justify-content: center;align-content: center">
         <div style="text-align: center;font-size: 12px">
           当前正在标注：{{images[currentIndex]}}<br/>
+          <el-button>上一张（←）</el-button>
+          <el-button>下一张（→）</el-button><br/>
           共计{{images.length}}个,当前{{currentIndex + 1}} <br/>
-          <el-button v-if="currentIndex > 0" @click="undoLast">撤销上一张标注</el-button>
         </div>
         <img v-if="currentImage" :src="currentImage" style="height: 100%;width: 100%;object-fit: contain"/>
         <div v-else style="text-align: center">标注完成</div>
@@ -22,7 +23,7 @@
         标签：{{config.positiveLabel }}<br/>
         {{ config.outputFolder }}<br/>
         已标注：{{positiveResultCount}}<br/>
-        快捷键：键盘右方向
+        快捷键：键盘上方向
       </div>
     </div>
     <div style="height: 30px;border-top: 1px solid black">
@@ -33,15 +34,13 @@
 </template>
 
 <script>
-import fse from "fs-extra"
+import path from "path"
 import {getCurrentWindow} from "@electron/remote"
 import {register, unregisterAll} from "electron-localshortcut"
 import {mapState} from "vuex"
 
-import {copyFile, moveFile, readAllImage, selectFile, selectFolder, removeFile} from "@/utils/fs"
-import {writeDataSetConfig} from "@/utils/config"
-import {readDataSetResult, writeDataSetResult} from "@/utils/result"
-import path from "path"
+import {copyFile, moveFile, readAllImage} from "@/utils/fs"
+import {writeDataSetResult} from "@/utils/result"
 
 const rules = {
   inputFolder: [{required: true, message: "不能为空"}],
@@ -84,7 +83,6 @@ export default {
       rules,
       currentIndex: -1, // 当前index
       images: [], // 所有图片
-      labeledImages: [], // 已经标注的图片 用于撤销
       result: {}, // 标注结果
       log: ""
     }
@@ -94,21 +92,11 @@ export default {
      * 注册快捷键
      */
     addShortcut() {
-      register(getCurrentWindow(),"Left", ()=> {this.labelCurrentImage(this.config.negativeLabel)})
-      register(getCurrentWindow(),"Right", ()=> {this.labelCurrentImage(this.config.positiveLabel)})
+      register(getCurrentWindow(),"Up", ()=> {this.labelCurrentImage(this.config.negativeLabel)})
+      register(getCurrentWindow(),"Down", ()=> {this.labelCurrentImage(this.config.positiveLabel)})
     },
     removeShortcut() {
       unregisterAll(getCurrentWindow())
-    },
-    async selectInputFolder() {
-      this.config.inputFolder = await selectFolder()
-    },
-    async selectOutputFolder() {
-      this.config.outputFolder = await selectFolder()
-    },
-    async importConfig() {
-      let file = await selectFile(["json"])
-      this.config = fse.readJSONSync(file)
     },
     /**
      * 获取下一个需要标注的index
@@ -116,30 +104,9 @@ export default {
      */
     getNextIndex() {
       let index = this.currentIndex + 1
-      if (this.config.continue) {
-        while (Object.keys(this.result).includes(this.images[index]) && index < this.images.length) {
-          this.log = `跳过已经标注过的图片${this.images[index]}`
-          index += 1
-        }
-      }
       if (index >= this.images.length)
         this.$message.info("已经标注完成")
       return index
-    },
-    /**
-     * 撤销上一张标记结果
-     */
-    undoLast() {
-      let image = this.images[this.currentIndex - 1]
-      // 删除图片
-      if (this.config.transfer)
-        moveFile(path.join(this.config.outputFolder, image), path.join(this.config.inputFolder, image))
-      else
-        removeFile(path.join(this.config.outputFolder, image))
-      // 删除数据
-      delete this.result[image]
-      writeDataSetResult(this.config.outputFolder, this.result)
-      this.currentIndex = this.currentIndex - 1
     },
     /**
      * 标注当前图片

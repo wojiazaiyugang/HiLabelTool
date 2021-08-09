@@ -1,13 +1,13 @@
 import path from "path"
 
 import fse from "fs-extra"
+import store from "@/store/index"
 
 // 公共配置
 const COMMON_DEFAULT_CONFIG = {
-  inputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
-  outputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\output", // 输出文件夹
+  inputFolder: "C:\\Users\\\\wojia\\Desktop\\1", // 输入数据文件夹
+  outputFolder: "C:\\Users\\\\wojia\\Desktop\\output", // 输出文件夹
   transfer: false, // 移动图片
-  continue: true, // 跳过已经标注的
 }
 /**
  * 配置文件类型
@@ -29,6 +29,7 @@ export const CONFIG_TYPE = {
     defaultConfig: Object.assign({}, COMMON_DEFAULT_CONFIG, {
       type: "bbox",
       showCrossHair: false, // 是否显示辅助十字线
+      labels: [],  // 标签
     }),
   }
 }
@@ -56,7 +57,12 @@ export const writeDataSetConfig = (dataSet, config) => {
  * @param dataSet
  * @return {Object}
  */
-export const readDataSetConfig = (dataSet) => {
+export const readDatasetConfig = (dataSet) => {
   let configFile = getDataSetConfigFile(dataSet)
   return fse.readJSONSync(configFile)
+}
+
+export const readCurrentDatasetConfig = () => {
+  let currentDataset = store.state.config.config.outputFolder
+  return readDatasetConfig(currentDataset)
 }

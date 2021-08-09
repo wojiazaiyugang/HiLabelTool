@@ -15,7 +15,7 @@
 <script>
 import fs from "fs"
 import {selectFolder} from "@/utils/fs"
-import {readDataSetConfig, getDataSetConfigFile} from "@/utils/config"
+import {readDatasetConfig, getDataSetConfigFile} from "@/utils/config"
 
 const rules = {
   datasetFolder: [{required: true, message: "不能为空"}]
@@ -42,7 +42,7 @@ export default {
         this.$message.error("未检测到数据集配置文件config.json")
         return
       }
-      let config = readDataSetConfig(this.config.datasetFolder)
+      let config = readDatasetConfig(this.config.datasetFolder)
       console.log(config)
     },
     async selectDatasetFolder() {

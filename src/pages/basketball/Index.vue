@@ -2,63 +2,63 @@
   <div class="basketball">
     <div style="display: flex;flex: 1">
       <div class="side-bar">
-        <div class="button">
-          <i class="iconfont icon-juxing"></i>
-          矩形
-        </div>
-        <div class="button" :class="showCrossHair ? 'active': ''"
-             @click="showCrossHair = !showCrossHair">
-          <i class="iconfont icon-shizixian-"></i>
-          十字线
-        </div>
-        <div class="button" @click="labelPreviousImage()">
-          <i class="iconfont icon-shangyige"></i>
-          上一个
-        </div>
-        <div class="button" @click="labelNextImage()">
-          <i class="iconfont icon-xiayige"></i>
-          下一个
-        </div>
-        <div class="button" @click="deleteLabelRect">
-          <i class="iconfont icon-delete"></i>
-          删除
-        </div>
-        <div class="button" style="margin-top: auto" @click="routeTo('/')">
-          <i class="iconfont icon-shouye"></i>
-          首页
-        </div>
-        <div class="button" @click="settingDialogVisible = true">
-          <i class="iconfont icon-shezhi"></i>
-          设置
-        </div>
+        <el-tooltip content="是否显示辅助十字线">
+          <div class="button" :class="showCrossHair ? 'active': ''"
+               @click="showCrossHair = !showCrossHair">
+            <i class="iconfont icon-shizixian-"></i>
+            十字线(c)
+          </div>
+        </el-tooltip>
+        <el-tooltip content="保存当前结果并切换到上一张图片">
+          <div class="button" @click="labelPreviousImage()">
+            <i class="iconfont icon-shangyige"></i>
+            上一个(a)
+          </div>
+        </el-tooltip>
+        <el-tooltip content="保存当前结果并切换到下一张图片">
+          <div class="button" @click="labelNextImage()">
+            <i class="iconfont icon-xiayige"></i>
+            下一个(d)
+          </div>
+        </el-tooltip>
+        <el-tooltip content="删除当前选择的矩形框">
+          <div class="button" @click="deleteLabelRect">
+            <i class="iconfont icon-delete"></i>
+            删除(del)
+          </div>
+        </el-tooltip>
       </div>
       <div style="background: rgba(51,81,116,0.56);flex: 1;position: relative">
         <div id="stage" style="width: 100%;height: 100%;position: absolute"></div>
       </div>
       <div style="width: 160px;display: flex;flex-direction: column;background: rgba(75,58,58,0.07)">
-        <div style="height: 40%;border-bottom: 1px solid black">
-          <div v-for="(label, index) in labels" :key="index" style="color: white" :style="{background: label.color}">
-            {{ index }} {{ label.name }}
+        <div style="height: 40%;border-bottom: 1px solid black;overflow-y: auto;overflow-x: hidden">
+          <div v-for="(label, index) in config.labels"
+               :key="index"
+               class="label-button"
+               :style="{background: label.color}"
+          @click="setSelectedRectLabel(label)">
+          {{label.name}}({{index}})
           </div>
         </div>
         <div style="flex: 1;display: flex;flex-direction: column">
-          <div v-for="(labelRect, index) in labelRects" class="label-rect" :style="{background: labelRect.fill()}"
-               :key="index" @click="changeStay(index)">
-            {{ index }} {{ getBBox(labelRect) | formatBBox }} <br/>
-            {{labelRect.stay}}
-            {{ stay[index] ? '保留' : '不保留' }} {{ labelRect.fill() }}
-            <br />
-            {{stay}}
+          <div v-for="(labelRect, index) in labelRects"
+               class="label-rect"
+               :style="{background: labelRect.label ? labelRect.label.color: null}"
+               :key="index"
+          @click="selectRect(labelRect)">
+            {{ labelRect.label ? labelRect.label.name : '未知类别' }}
+            {{ labelRect.stay ? '保留' : '不保留' }}
+            <span class="link" style="margin-left: auto" @click="changeStay(labelRect)">切换</span>
           </div>
         </div>
       </div>
     </div>
     <div
       style="display: flex;flex-wrap: nowrap;height: 80px;background: rgba(203,191,191,0.12);overflow-y: auto">
-      已经标注bbox个数：{{ labelRects.length }} 标注进度：{{ currentImageIndex }}/{{ images.length }}
-      <br/>
-      当前状态；{{ status }} {{ pointerPosition }}
-      <br/>
+      当前图片{{this.images[this.currentImageIndex]}}<br/>
+      已经标注bbox个数：{{ labelRects.length }} 标注进度：{{ currentImageIndex }}/{{ images.length }}<br/>
+      当前状态；{{ status }} {{ pointerPosition }}<br/>
       {{ log }}
     </div>
   </div>
@@ -69,9 +69,12 @@ import path from "path"
 import Konva from "konva"
 import {remote} from "electron"
 import * as fs from "fs"
-import fse from "fs-extra"
+import {mapState} from "vuex"
+import {register, unregisterAll} from "electron-localshortcut"
+import {getCurrentWindow} from "@electron/remote"
 
-import {routeTo} from "@/utils/router"
+import {writeCurrentDataSetResult, readCurrentDatasetResult} from "@/utils/result"
+import {copyFile, moveFile} from "@/utils/fs"
 
 const STATUS = { // 状态
   normal: "正常状态",
@@ -89,18 +92,22 @@ export default {
     formatBBox: bbox => `(${bbox.ltX},${bbox.ltY},${bbox.rbX},${bbox.rbY})`
   },
   computed: {
+    ...mapState({
+      config: state => state.config.config
+    }),
+    /**
+     * 当前在标注的图片
+     * @return {String || null}
+     */
+    currentImage() {
+      return this.images[this.currentImageIndex]
+    },
     /**
      * 当前正在标注的图片完整路径
      * @return {String}
      */
-    imagePath() {
-      return this.images[this.currentImageIndex]
-    },
-    /**
-     * 当前正在标注的图片的文件名
-     */
-    imageName() {
-      return this.imagePath.substring(this.imagePath.lastIndexOf(path.sep) + 1)
+    currentImagePath() {
+      return path.join(this.config.inputFolder, this.currentImage)
     },
     /**
      * konva的rect
@@ -128,10 +135,16 @@ export default {
       this.resizeImage()
     })
     this.resizeObserver.observe(document.getElementById(this.containerID))
+    this.result = readCurrentDatasetResult()
+    this.addShortcut()
+    this.loadDataFolder()
+  },
+  destroyed() {
+    unregisterAll(getCurrentWindow())
   },
   data() {
     return {
-      status: "", // 当前状态
+      status: STATUS.normal, // 当前状态
       containerID: "stage", //div的id
       setTimeoutTimer: null, //
       stage: null, // konva的stage
@@ -143,10 +156,6 @@ export default {
       drawing: false, // 当前正在绘画
       drawStartPoint: {x: null, y: null},// 绘画的起始点
       showCrossHair: false, // 是否显示辅助十字线
-      setting: { // 配置
-        inputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
-        outputFolder: "C:\\Users\\\\wojiazaiyugang\\Desktop\\output", // 输出文件夹
-      },
       images: [], // 图片列表
       currentImageIndex: -1, // 当前的index
       currentImageSize: {width: null, height: null},// 当前原视图像的size
@@ -155,17 +164,34 @@ export default {
       log: "", // 日志
       initStageSize: {width: null, height: null},
       stayLabelRects: [], // 保存到下一帧的label rect
-      labels: [{name: "label1", color: "#af3333"}, {name: "label1", color: "#5cb675"}], // 所有标签
-      stay: {}, // 某个rect是否要留到下一帧，key是rect的index
+      result: {}, // 当前数据集的result
     }
   },
   methods: {
-    changeStay(index) {
-      console.log(this.stay)
-      this.stay[index] = !(this.stay[index] || false)
-      console.log(this.stay)
+    setLabel(rect, label) {
+      rect.fill(label.color)
+      this.$set(rect, "label", label)
     },
-    routeTo: path => routeTo(path),
+    setSelectedRectLabel(label) {
+      this.setLabel(this.selectedLabelRect, label)
+    },
+    /**
+     * 注册快捷键
+     */
+    addShortcut() {
+      register(getCurrentWindow(),"C", ()=> {this.showCrossHair = !this.showCrossHair})
+      register(getCurrentWindow(),"A", ()=> {this.labelPreviousImage()})
+      register(getCurrentWindow(),"D", ()=> {this.labelNextImage()})
+      register(getCurrentWindow(),"Delete", ()=> {this.deleteLabelRect()})
+      for (let i=0;i<10;i++) {
+        if (i >= this.config.labels.length) return
+        register(getCurrentWindow(),i.toString(), ()=> {this.setSelectedRectLabel(this.config.labels[i])})
+      }
+
+    },
+    changeStay(labelRect) {
+      this.$set(labelRect, "stay", ! labelRect.stay)
+    },
     /**
      * 选择文件夹
      * @return {null | string}
@@ -182,16 +208,15 @@ export default {
     },
     selectOutputFolder() {
       let folder = this.selectFolder()
-      if (folder) this.setting.outputFolder = folder
+      if (folder) this.config.outputFolder = folder
     },
     deleteLabelRect() {
-      this.stage.find("Transformer").forEach(t => t.destroy())
+      this.destoryAllTransformer()
       this.selectedLabelRect && this.selectedLabelRect.destroy()
     },
     loadDataFolder() {
-      this.settingDialogVisible = false
-      fs.readdirSync(this.setting.inputFolder).forEach(item => {
-        if (["jpg", "png"].includes(item.split(".").pop())) this.images.push(path.join(this.setting.inputFolder, item))
+      fs.readdirSync(this.config.inputFolder).forEach(file => {
+        if (["jpg", "png"].includes(file.split(".").pop())) this.images.push(file)
       })
       this.labelImage(0)
     },
@@ -233,13 +258,14 @@ export default {
      * 标注某一张图片
      */
     labelImage(index) {
-      let stayRects = this.labelRects.filter(labelRect => labelRect.stay)
-      this.labelGroup.removeChildren()
-      stayRects.forEach(labelRect => this.labelGroup.add(labelRect))
+      this.destoryAllTransformer()
+      this.labelRects.forEach(labelRect => {
+        if (!labelRect.stay) labelRect.destroy()
+      })
       this.imageGroup.removeChildren()
       this.currentImageIndex = index
       let imageObj = new Image()
-      imageObj.src = this.imagePath
+      imageObj.src = this.currentImagePath
       imageObj.onload = () => {
         this.currentImageSize = {
           width: imageObj.width,
@@ -252,6 +278,14 @@ export default {
         })
         this.imageGroup.add(image)
         this.fitStageToContainer()
+        for (let result of this.result[this.currentImage] || []) {
+          let rect = this.addRect(result.bbox.ltX / this.scaleX, result.bbox.ltY / this.scaleY, result.bbox.rbX / this.scaleX, result.bbox.rbY / this.scaleY)
+          if (!rect) continue
+          let label = this.config.labels.find(label => label.name === result.label)
+          if (label) {
+            this.setLabel(rect, label)
+          }
+        }
       }
     },
     /**
@@ -274,17 +308,22 @@ export default {
      */
     saveLabelRect() {
       this.log = ""
-      if (this.labelRects.length === 0) return
-      let result = {
-        fileName: this.imageName,
-        filePath: this.imagePath,
-        bboxes: []
+      if (this.labelRects.length === 0) {
+        delete this.result[this.currentImage]
+      } else {
+        let result = []
+        this.labelRects.forEach(labelRect => result.push({
+          bbox: this.getBBox(labelRect),
+          label: labelRect.label ? labelRect.label.name : "未标注类别"
+        }))
+        this.result[this.currentImage] = result
       }
-      this.labelRects.forEach(labelRect => result.bboxes.push(this.getBBox(labelRect)))
-      let outputFilePath = `${path.join(this.setting.outputFolder, this.imageName)}.json`
-      fse.outputJsonSync(outputFilePath, result)
-      console.log(result.bboxes)
-      this.log = `标注结果保存到${outputFilePath}`
+      let toFile = path.join(this.config.outputFolder, this.currentImage)
+      if (this.config.transfer)
+        moveFile(this.currentImagePath, toFile)
+      else
+        copyFile(this.currentImagePath, toFile)
+      writeCurrentDataSetResult(this.result)
     },
     /**
      * 初始化konva
@@ -320,11 +359,11 @@ export default {
       this.stage.scale({x: scaleX, y: scaleY})
     },
     onMouseEnter() {
-      this.status = STATUS.normal
+      // this.status = STATUS.normal
       this.stage.container().style.cursor = "crosshair"
     },
     onMouseLeave() {
-      this.status = STATUS.normal
+      // this.status = STATUS.normal
       this.drawGroup.removeChildren()
       this.stage.container().style.cursor = "default"
     },
@@ -337,7 +376,7 @@ export default {
         y: Math.round(this.stage.getRelativePointerPosition().y * this.scaleY)
       }
       this.drawGroup.removeChildren()
-      if (this.setting.showCrossHair && this.status === STATUS.normal) {
+      if (this.showCrossHair && this.status === STATUS.normal) {
         let [x, y] = [this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y]
         this.drawGroup.add(
           new Konva.Line({
@@ -375,10 +414,6 @@ export default {
      * @param {MouseEvent} e
      */
     onWheel(e) {
-      // this.stage.position({
-      //   x: this.stage.position().x + 1,
-      //   y: this.stage.position().y + 1
-      // })
       e.evt.preventDefault()
       let pointer = this.stage.getRelativePointerPosition()
       let step = 0.1
@@ -406,16 +441,27 @@ export default {
      * 舞台点击事件，用于添加和删除transformer
      */
     onClick(e) {
-      this.stage.find("Transformer").forEach(t => t.destroy())
+      this.destoryAllTransformer()
       if (!e.target.hasName(LABEL_RECT_NAME)) {
         this.status = STATUS.normal
         this.selectedLabelRect = null
         return
       }
+      this.selectRect(e.target)
+    },
+    destoryAllTransformer() {
+      this.stage.find("Transformer").forEach(t => t.destroy())
+    },
+    /**
+     * 选择一个rect
+     * @param {Konva.Rect} rect
+     */
+    selectRect(rect) {
+      this.destoryAllTransformer()
       let transFormer = new Konva.Transformer({rotateEnabled: false})
       this.labelGroup.add(transFormer)
-      this.selectedLabelRect = e.target
-      transFormer.nodes([e.target])
+      this.selectedLabelRect = rect
+      transFormer.nodes([rect])
       this.status = STATUS.selecting
     },
     onMouseUp() {
@@ -426,21 +472,26 @@ export default {
       this.status = STATUS.drawing
       this.drawStartPoint = this.stage.getRelativePointerPosition()
     },
-    stopDraw() {
-      this.status = STATUS.normal
-      let color = "rgba(31,25,25,0.89)"
+    /**
+     * 添加一个标注框，可能会添加失败
+     * @return {Konva.Rect || null}
+     */
+    addRect(ltX, ltY, rbX, rbY) {
       let rect = new Konva.Rect({
-        x: this.drawStartPoint.x,
-        y: this.drawStartPoint.y,
-        width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
-        height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
-        fill: color,
-        opacity: 0.1,
+        x: ltX,
+        y: ltY,
+        width: rbX - ltX,
+        height: rbY - ltY,
+        fill: "rgba(31,25,25,0.93)",
+        opacity: 0.5,
         draggable: true,
         name: LABEL_RECT_NAME,
         strokeScaleEnabled: false
       })
-      if (rect.width() < 20) return // 太小的bbox不要
+      if (rect.width() < 20) {  // 太小的bbox不要
+        this.$message.warning("框太小了，不要了")
+        return null
+      }
       rect.on("mouseenter", () => {
         if (this.status !== STATUS.drawing) {
           this.stage.container().style.cursor = "pointer"
@@ -461,6 +512,13 @@ export default {
         this.status = STATUS.normal
       })
       this.labelGroup.add(rect)
+      return rect
+    },
+    stopDraw() {
+      this.status = STATUS.normal
+      let rect = this.addRect(this.drawStartPoint.x, this.drawStartPoint.y, this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y)
+      if (!rect) return
+      this.selectRect(rect)
     }
   }
 }
@@ -476,7 +534,7 @@ export default {
 
   .side-bar {
     background: rgba(94, 88, 88, 0.09);
-    width: 50px;
+    width: 65px;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -497,32 +555,28 @@ export default {
     }
   }
 
-  .label-rect {
-    padding: 5px;
+  .label-button {
+    height: 50px;
     color: white;
-    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     &:hover {
       cursor: pointer;
     }
   }
-}
-</style>
 
-<style lang="scss">
-.basketball {
-  .el-dialog {
+  .label-rect {
+    padding: 5px;
+    background: rgba(17, 17, 17, 0.7);
+    color: white;
+    white-space: nowrap;
     display: flex;
-    flex-direction: column;
 
-    .el-dialog__body {
-      flex: 1;
+    &:hover {
+      cursor: pointer;
     }
-  }
-
-  .el-form-item__content {
-    display: flex;
-    flex-wrap: nowrap;
   }
 }
 </style>
