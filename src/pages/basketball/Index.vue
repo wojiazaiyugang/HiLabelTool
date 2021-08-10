@@ -237,6 +237,7 @@ export default {
     labelNextImage() {
       this.saveLabelRect()
       if (this.currentImageIndex + 1 >= this.images.length) {
+        this.$message.info("没有下一张了")
         return
       }
       this.labelImage(this.currentImageIndex + 1)
@@ -314,15 +315,17 @@ export default {
         let result = []
         this.labelRects.forEach(labelRect => result.push({
           bbox: this.getBBox(labelRect),
-          label: labelRect.label ? labelRect.label.name : "未标注类别"
+          label: labelRect.label ? labelRect.label.name : "未标注类别",
+          imageWidth: this.currentImageSize.width,
+          imageHeight: this.currentImageSize.height
         }))
         this.result[this.currentImage] = result
+        let toFile = path.join(this.config.outputFolder, this.currentImage)
+        if (this.config.transfer)
+          moveFile(this.currentImagePath, toFile)
+        else
+          copyFile(this.currentImagePath, toFile)
       }
-      let toFile = path.join(this.config.outputFolder, this.currentImage)
-      if (this.config.transfer)
-        moveFile(this.currentImagePath, toFile)
-      else
-        copyFile(this.currentImagePath, toFile)
       writeCurrentDataSetResult(this.result)
     },
     /**
@@ -400,7 +403,7 @@ export default {
           width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
           height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
           stroke: "#000",
-          strokeWidth: 2}))
+          strokeWidth: 0.1}))
     },
     onMouseDown() {
       if (this.status === STATUS.normal)
@@ -488,7 +491,7 @@ export default {
         name: LABEL_RECT_NAME,
         strokeScaleEnabled: false
       })
-      if (rect.width() < 20) {  // 太小的bbox不要
+      if (rect.width() < 5) {  // 太小的bbox不要
         this.$message.warning("框太小了，不要了")
         return null
       }
