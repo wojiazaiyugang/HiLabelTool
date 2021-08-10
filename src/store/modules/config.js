@@ -7,6 +7,7 @@ const state = {
     negativeLabel: "", // 负样本标签
     positiveLabel: "", // 正样本标签
     showCrossHair: false, // 是否显示辅助十字线
+    autoSelect: false, // 标注完自动select该bbox
     labels: [],  // 标签
   },
 }

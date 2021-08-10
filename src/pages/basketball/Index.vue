@@ -2,9 +2,16 @@
   <div class="basketball">
     <div style="display: flex;flex: 1">
       <div class="side-bar">
+        <el-tooltip content="标注完一个bbox后是否自动选择该bbox">
+          <div class="button" :class="config.autoSelect ? 'active': ''"
+               @click="updateConfig('autoSelect', !config.autoSelect)">
+            <i class="iconfont icon-xuanze"></i>
+            自动选择(s)
+          </div>
+        </el-tooltip>
         <el-tooltip content="是否显示辅助十字线">
-          <div class="button" :class="showCrossHair ? 'active': ''"
-               @click="showCrossHair = !showCrossHair">
+          <div class="button" :class="config.showCrossHair ? 'active': ''"
+               @click="updateConfig('showCrossHair', !config.showCrossHair)">
             <i class="iconfont icon-shizixian-"></i>
             十字线(c)
           </div>
@@ -69,11 +76,12 @@ import path from "path"
 import Konva from "konva"
 import {remote} from "electron"
 import * as fs from "fs"
-import {mapState} from "vuex"
+import {mapState, mapMutations} from "vuex"
 import {register, unregisterAll} from "electron-localshortcut"
 import {getCurrentWindow} from "@electron/remote"
 
 import {writeCurrentDataSetResult, readCurrentDatasetResult} from "@/utils/result"
+import {updateConfig} from "@/utils/config"
 import {copyFile, moveFile} from "@/utils/fs"
 
 const STATUS = { // 状态
@@ -168,6 +176,12 @@ export default {
     }
   },
   methods: {
+    ...mapMutations({
+      setConfig: "config/setConfig"
+    }),
+    updateConfig(key, value) {
+      updateConfig(key, value)
+    },
     setLabel(rect, label) {
       rect.fill(label.color)
       this.$set(rect, "label", label)
@@ -179,7 +193,8 @@ export default {
      * 注册快捷键
      */
     addShortcut() {
-      register(getCurrentWindow(),"C", ()=> {this.showCrossHair = !this.showCrossHair})
+      register(getCurrentWindow(),"C", ()=> {this.updateConfig("showCrossHair", !this.config.showCrossHair)})
+      register(getCurrentWindow(),"S", ()=> {this.updateConfig("autoSelect", !this.config.autoSelect)})
       register(getCurrentWindow(),"A", ()=> {this.labelPreviousImage()})
       register(getCurrentWindow(),"D", ()=> {this.labelNextImage()})
       register(getCurrentWindow(),"Delete", ()=> {this.deleteLabelRect()})
@@ -256,10 +271,18 @@ export default {
       this.stage.position({x: 0, y: 0})
     },
     /**
+     * 设置当前状态为正常
+     */
+    setNormalStatus() {
+      this.status = STATUS.normal
+      this.stage.container().style.cursor = "crosshair"
+    },
+    /**
      * 标注某一张图片
      */
     labelImage(index) {
       this.destoryAllTransformer()
+      this.setNormalStatus()
       this.labelRects.forEach(labelRect => {
         if (!labelRect.stay) labelRect.destroy()
       })
@@ -362,8 +385,7 @@ export default {
       this.stage.scale({x: scaleX, y: scaleY})
     },
     onMouseEnter() {
-      // this.status = STATUS.normal
-      this.stage.container().style.cursor = "crosshair"
+      this.setNormalStatus()
     },
     onMouseLeave() {
       // this.status = STATUS.normal
@@ -379,7 +401,7 @@ export default {
         y: Math.round(this.stage.getRelativePointerPosition().y * this.scaleY)
       }
       this.drawGroup.removeChildren()
-      if (this.showCrossHair && this.status === STATUS.normal) {
+      if (this.config.showCrossHair && this.status === STATUS.normal) {
         let [x, y] = [this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y]
         this.drawGroup.add(
           new Konva.Line({
@@ -446,7 +468,7 @@ export default {
     onClick(e) {
       this.destoryAllTransformer()
       if (!e.target.hasName(LABEL_RECT_NAME)) {
-        this.status = STATUS.normal
+        this.setNormalStatus()
         this.selectedLabelRect = null
         return
       }
@@ -505,23 +527,24 @@ export default {
         if (this.status !== STATUS.drawing) {
           this.stage.container().style.cursor = "crosshair"
           if (this.status === STATUS.hovering)
-            this.status = STATUS.normal
+            this.setNormalStatus()
         }
       })
       rect.on("transformstart", () => {
         this.status = STATUS.resizing
       })
       rect.on("transformend", () => {
-        this.status = STATUS.normal
+        this.setNormalStatus()
       })
       this.labelGroup.add(rect)
       return rect
     },
     stopDraw() {
-      this.status = STATUS.normal
+      this.setNormalStatus()
       let rect = this.addRect(this.drawStartPoint.x, this.drawStartPoint.y, this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y)
       if (!rect) return
-      this.selectRect(rect)
+      if (this.config.autoSelect)
+        this.$nextTick(()=>{this.selectRect(rect)})
     }
   }
 }
@@ -537,7 +560,7 @@ export default {
 
   .side-bar {
     background: rgba(94, 88, 88, 0.09);
-    width: 65px;
+    width: 75px;
     height: 100%;
     display: flex;
     flex-direction: column;

@@ -29,6 +29,7 @@ export const CONFIG_TYPE = {
     defaultConfig: Object.assign({}, COMMON_DEFAULT_CONFIG, {
       type: "bbox",
       showCrossHair: false, // 是否显示辅助十字线
+      autoSelect: false, // 标注完自动select该bbox
       labels: [],  // 标签
     }),
   }
@@ -52,6 +53,12 @@ export const writeDataSetConfig = (dataSet, config) => {
   fse.outputJSONSync(configFile, config)
 }
 
+export const writeCurrentDatasetConfig = config => {
+  let currentDataset = store.state.config.config.outputFolder
+  writeDataSetConfig(currentDataset, config)
+}
+
+
 /**
  * 读取数据集配置
  * @param dataSet
@@ -65,4 +72,11 @@ export const readDatasetConfig = (dataSet) => {
 export const readCurrentDatasetConfig = () => {
   let currentDataset = store.state.config.config.outputFolder
   return readDatasetConfig(currentDataset)
+}
+
+export const updateConfig = (key, value) => {
+  let config = JSON.parse(JSON.stringify(store.state.config.config))
+  config[key] = value
+  store.commit("config/setConfig", config)
+  writeCurrentDatasetConfig(config)
 }
