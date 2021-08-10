@@ -5,8 +5,8 @@ import store from "@/store/index"
 
 // 公共配置
 const COMMON_DEFAULT_CONFIG = {
-  inputFolder: "C:\\Users\\\\wojia\\Desktop\\1", // 输入数据文件夹
-  outputFolder: "C:\\Users\\\\wojia\\Desktop\\output", // 输出文件夹
+  inputFolder: "C:\\Users\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
+  outputFolder: "C:\\Users\\wojiazaiyugang\\Desktop\\output", // 输出文件夹
   transfer: false, // 移动图片
 }
 /**
@@ -29,6 +29,7 @@ export const CONFIG_TYPE = {
     defaultConfig: Object.assign({}, COMMON_DEFAULT_CONFIG, {
       type: "bbox",
       showCrossHair: false, // 是否显示辅助十字线
+      lineColor: "#000000", // 辅助线颜色
       autoSelect: false, // 标注完自动select该bbox
       labels: [],  // 标签
     }),

@@ -16,6 +16,10 @@
             十字线(c)
           </div>
         </el-tooltip>
+        <div class="button">
+          <el-color-picker :value="config.lineColor" show-alpha @change="changeColor"></el-color-picker>
+          颜色
+        </div>
         <el-tooltip content="保存当前结果并切换到上一张图片">
           <div class="button" @click="labelPreviousImage()">
             <i class="iconfont icon-shangyige"></i>
@@ -179,6 +183,10 @@ export default {
     ...mapMutations({
       setConfig: "config/setConfig"
     }),
+    changeColor(color) {
+      console.log(color)
+      this.updateConfig("lineColor", color)
+    },
     updateConfig(key, value) {
       updateConfig(key, value)
     },
@@ -406,13 +414,13 @@ export default {
         this.drawGroup.add(
           new Konva.Line({
             points: [0, y, this.stage.width(), y],
-            stroke: "green",
+            stroke: this.config.lineColor || "green",
             strokeWidth: 1,
             dash: [20, 5]
           }),
           new Konva.Line({
             points: [x, 0, x, this.stage.height()],
-            stroke: "green",
+            stroke: this.config.lineColor || "cgreen",
             strokeWidth: 1,
             dash: [20, 5]
           })
@@ -424,7 +432,7 @@ export default {
           y: this.drawStartPoint.y,
           width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
           height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
-          stroke: "#000",
+          stroke: this.config.lineColor || "#000",
           strokeWidth: 0.1}))
     },
     onMouseDown() {
@@ -441,13 +449,13 @@ export default {
     onWheel(e) {
       e.evt.preventDefault()
       let pointer = this.stage.getRelativePointerPosition()
-      let step = 0.1
+      let step = 0.25
       let oldX = this.stage.scaleX() * pointer.x
       let oldY = this.stage.scaleY() * pointer.y
       if (e.evt.wheelDelta < 0) {
         this.stage.scale({
-          x: this.stage.scaleX() - step,
-          y: this.stage.scaleY() - step,
+          x: Math.max(0.1, this.stage.scaleX() - step),
+          y: Math.max(0.1, this.stage.scaleY() - step),
         })
       } else {
         this.stage.scale({
@@ -507,7 +515,7 @@ export default {
         y: ltY,
         width: rbX - ltX,
         height: rbY - ltY,
-        fill: "rgba(31,25,25,0.93)",
+        fill: this.config.lineColor || "rgba(31,25,25,0.93)",
         opacity: 0.5,
         draggable: true,
         name: LABEL_RECT_NAME,
@@ -541,7 +549,11 @@ export default {
     },
     stopDraw() {
       this.setNormalStatus()
-      let rect = this.addRect(this.drawStartPoint.x, this.drawStartPoint.y, this.stage.getRelativePointerPosition().x, this.stage.getRelativePointerPosition().y)
+      let ltX = Math.min(this.drawStartPoint.x, this.stage.getRelativePointerPosition().x)
+      let rbX = Math.max(this.drawStartPoint.x, this.stage.getRelativePointerPosition().x)
+      let ltY = Math.min(this.drawStartPoint.y, this.stage.getRelativePointerPosition().y)
+      let rbY = Math.max(this.drawStartPoint.y, this.stage.getRelativePointerPosition().y)
+      let rect = this.addRect(ltX, ltY, rbX, rbY)
       if (!rect) return
       if (this.config.autoSelect)
         this.$nextTick(()=>{this.selectRect(rect)})
