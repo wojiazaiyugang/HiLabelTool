@@ -52,16 +52,20 @@ module.exports = {
   pluginOptions: {
     electronBuilder: {
       builderOptions: {
+        "productName": "HiLabelTool",
         // "files": ["dist_electron/**/*"],
         //         "productName": "RobotStudio",
         "win": {
           "icon": "public/images/logo.ico"
         },
-        "mac": {
-          "icon": "public/images/logo.ico"
-        },
+        // "mac": {
+        //   "icon": "public/images/logo.ico"
+        // },
         "linux": {
-          "icon": "public/images/logo.ico"
+          "icon": "public/images/logo.ico",
+          "target": [
+            "deb"
+          ]
         }
         //         "publish": [{
         //           "provider": "generic",
