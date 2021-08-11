@@ -5,8 +5,8 @@ import store from "@/store/index"
 
 // 公共配置
 const COMMON_DEFAULT_CONFIG = {
-  inputFolder: "C:\\Users\\wojiazaiyugang\\Desktop\\1", // 输入数据文件夹
-  outputFolder: "C:\\Users\\wojiazaiyugang\\Desktop\\output", // 输出文件夹
+  inputFolder: "C:\\Users\\wojia\\Desktop\\1", // 输入数据文件夹
+  outputFolder: "C:\\Users\\wojia\\Desktop\\output", // 输出文件夹
   transfer: false, // 移动图片
 }
 /**

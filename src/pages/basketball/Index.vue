@@ -93,8 +93,6 @@ const STATUS = { // 状态
   drawing: "正在绘图",
   selecting: "选择了某个图形",
   hovering: "悬停在某个图形上",
-  moving: "正在移动某个图形",
-  resizing: "正在resize某个图形",
 }
 const LABEL_RECT_NAME = "LABEL_RECT_NAME" // 标注的bbox的名字
 
@@ -134,11 +132,11 @@ export default {
     /**
      * 可视区域和原始图片的缩放比例
      */
-    scaleX() {
-      return this.currentImageSize.width / this.container.offsetWidth
+    imageScaleX() {
+      return this.container ? this.currentImageSize.width / this.container.offsetWidth : 1
     },
-    scaleY() {
-      return this.currentImageSize.height / this.container.offsetHeight
+    imageScaleY() {
+      return this.container ? this.currentImageSize.height / this.container.offsetHeight : 1
     },
   },
   mounted() {
@@ -164,7 +162,7 @@ export default {
       imageGroup: null, // 图片层
       labelGroup: null, // 画的标签层
       drawGroup: null, // 正在画的层
-      imageURL: "C:\\Users\\\\\\wojiazaiyugang\\Desktop\\1\\00001.jpg",
+      imageURL: "C:\\Users\\wojiazaiyugang\\Desktop\\1\\00001.jpg",
       drawing: false, // 当前正在绘画
       drawStartPoint: {x: null, y: null},// 绘画的起始点
       showCrossHair: false, // 是否显示辅助十字线
@@ -184,7 +182,6 @@ export default {
       setConfig: "config/setConfig"
     }),
     changeColor(color) {
-      console.log(color)
       this.updateConfig("lineColor", color)
     },
     updateConfig(key, value) {
@@ -236,6 +233,7 @@ export default {
     deleteLabelRect() {
       this.destoryAllTransformer()
       this.selectedLabelRect && this.selectedLabelRect.destroy()
+      this.setNormalStatus()
     },
     loadDataFolder() {
       fs.readdirSync(this.config.inputFolder).forEach(file => {
@@ -311,7 +309,7 @@ export default {
         this.imageGroup.add(image)
         this.fitStageToContainer()
         for (let result of this.result[this.currentImage] || []) {
-          let rect = this.addRect(result.bbox.ltX / this.scaleX, result.bbox.ltY / this.scaleY, result.bbox.rbX / this.scaleX, result.bbox.rbY / this.scaleY)
+          let rect = this.addRect(result.bbox.ltX / this.imageScaleX, result.bbox.ltY / this.imageScaleY, result.bbox.rbX / this.imageScaleX, result.bbox.rbY / this.imageScaleY)
           if (!rect) continue
           let label = this.config.labels.find(label => label.name === result.label)
           if (label) {
@@ -326,8 +324,8 @@ export default {
      * @return {Object}
      */
     getBBox(rect) {
-      let [ltX, ltY] = [Math.round(rect.position().x * this.scaleX), Math.round(rect.position().y * this.scaleY)]
-      let [rbX, rbY] = [ltX + Math.round(rect.width() * this.scaleX * rect.scaleX()), ltY + Math.round(rect.height() * this.scaleY * rect.scaleY())]
+      let [ltX, ltY] = [Math.round(rect.position().x * this.imageScaleX), Math.round(rect.position().y * this.imageScaleY)]
+      let [rbX, rbY] = [ltX + Math.round(rect.width() * this.imageScaleX * rect.scaleX()), ltY + Math.round(rect.height() * this.imageScaleY * rect.scaleY())]
       return {
         ltX: ltX,
         ltY: ltY,
@@ -396,7 +394,6 @@ export default {
       this.setNormalStatus()
     },
     onMouseLeave() {
-      // this.status = STATUS.normal
       this.drawGroup.removeChildren()
       this.stage.container().style.cursor = "default"
     },
@@ -405,8 +402,8 @@ export default {
      */
     onMouseMove() {
       this.pointerPosition = {
-        x: Math.round(this.stage.getRelativePointerPosition().x * this.scaleX),
-        y: Math.round(this.stage.getRelativePointerPosition().y * this.scaleY)
+        x: Math.round(this.stage.getRelativePointerPosition().x * this.imageScaleX),
+        y: Math.round(this.stage.getRelativePointerPosition().y * this.imageScaleY)
       }
       this.drawGroup.removeChildren()
       if (this.config.showCrossHair && this.status === STATUS.normal) {
@@ -420,28 +417,41 @@ export default {
           }),
           new Konva.Line({
             points: [x, 0, x, this.stage.height()],
-            stroke: this.config.lineColor || "cgreen",
+            stroke: this.config.lineColor || "green",
             strokeWidth: 1,
             dash: [20, 5]
           })
         )
       }
-      if (this.status === STATUS.drawing)
+      if (this.status === STATUS.drawing) {
+        let position = this.getValidPointerPosition()
         this.drawGroup.add(new Konva.Rect({
           x: this.drawStartPoint.x,
           y: this.drawStartPoint.y,
-          width: this.stage.getRelativePointerPosition().x - this.drawStartPoint.x,
-          height: this.stage.getRelativePointerPosition().y - this.drawStartPoint.y,
-          stroke: this.config.lineColor || "#000",
+          width:  position.x - this.drawStartPoint.x,
+          height: position.y - this.drawStartPoint.y,
+          stroke: this.config.lineColor || "rgba(0,0,0,0.2)",
+          fill: this.config.lineColor || "rgba(0,0,0,0.2)",
+          opacity: 0.5,
           strokeWidth: 0.1}))
+      }
+    },
+    /**
+     * 拖动过程中可能会超出图片，要限定在stage里面
+     * @return {Object}
+     */
+    getValidPointerPosition() {
+      let x = Math.max(0, Math.min(this.stage.width(), this.stage.getRelativePointerPosition().x))
+      let y = Math.max(0, Math.min(this.stage.height(), this.stage.getRelativePointerPosition().y))
+      return {x, y}
     },
     onMouseDown() {
       if (this.status === STATUS.normal)
         this.startDraw()
-      else if (this.status === STATUS.selecting) {
-        this.status = STATUS.moving
-        this.drawGroup.removeChildren()
-      }
+      // else if (this.status === STATUS.selecting) {
+      //   this.status = STATUS.moving
+      //   this.drawGroup.removeChildren()
+      // }
     },
     /**
      * @param {MouseEvent} e
@@ -474,13 +484,13 @@ export default {
      * 舞台点击事件，用于添加和删除transformer
      */
     onClick(e) {
-      this.destoryAllTransformer()
-      if (!e.target.hasName(LABEL_RECT_NAME)) {
+      if (this.status === STATUS.hovering)
+        this.selectRect(e.target)
+      else if (this.status === STATUS.selecting) {
+        this.destoryAllTransformer()
         this.setNormalStatus()
         this.selectedLabelRect = null
-        return
       }
-      this.selectRect(e.target)
     },
     destoryAllTransformer() {
       this.stage.find("Transformer").forEach(t => t.destroy())
@@ -526,37 +536,36 @@ export default {
         return null
       }
       rect.on("mouseenter", () => {
-        if (this.status !== STATUS.drawing) {
+        if (this.status === STATUS.normal) {
           this.stage.container().style.cursor = "pointer"
           this.status = STATUS.hovering
         }
       })
       rect.on("mouseleave", () => {
-        if (this.status !== STATUS.drawing) {
-          this.stage.container().style.cursor = "crosshair"
-          if (this.status === STATUS.hovering)
-            this.setNormalStatus()
-        }
+        if (this.status === STATUS.hovering)
+          this.setNormalStatus()
       })
       rect.on("transformstart", () => {
-        this.status = STATUS.resizing
       })
       rect.on("transformend", () => {
-        this.setNormalStatus()
       })
       this.labelGroup.add(rect)
       return rect
     },
     stopDraw() {
-      this.setNormalStatus()
+      // 处理从右向左画框的情况
       let ltX = Math.min(this.drawStartPoint.x, this.stage.getRelativePointerPosition().x)
       let rbX = Math.max(this.drawStartPoint.x, this.stage.getRelativePointerPosition().x)
       let ltY = Math.min(this.drawStartPoint.y, this.stage.getRelativePointerPosition().y)
       let rbY = Math.max(this.drawStartPoint.y, this.stage.getRelativePointerPosition().y)
+      ltX = Math.max(0, ltX)
+      ltY = Math.max(0, ltY)
+      rbX = Math.min(this.stage.width(), rbX)
+      rbY = Math.min(this.stage.height(), rbY)
       let rect = this.addRect(ltX, ltY, rbX, rbY)
-      if (!rect) return
-      if (this.config.autoSelect)
+      if (rect && this.config.autoSelect)
         this.$nextTick(()=>{this.selectRect(rect)})
+      this.setNormalStatus()
     }
   }
 }
