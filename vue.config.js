@@ -56,15 +56,15 @@ module.exports = {
         // "files": ["dist_electron/**/*"],
         //         "productName": "RobotStudio",
         "win": {
-          "icon": "public/images/logo.ico"
+          "icon": "public/images/logo.png"
         },
         // "mac": {
         //   "icon": "public/images/logo.ico"
         // },
         "linux": {
-          "icon": "public/images/logo.ico",
+          "icon": "public/images/logo.png",
           "target": [
-            "deb"
+            "AppImage"
           ]
         }
         //         "publish": [{
