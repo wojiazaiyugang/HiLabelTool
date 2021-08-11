@@ -176,6 +176,8 @@ export default {
       initStageSize: {width: null, height: null},
       stayLabelRects: [], // 保存到下一帧的label rect
       result: {}, // 当前数据集的result
+      // 是否需要save，防止疯狂切图的时候不停保存数据错乱，以下情况需要保存：新建bbox，缩放bbox、移动bbox、删除bbox
+      needSave: false,
     }
   },
   methods: {
@@ -234,6 +236,7 @@ export default {
       this.destoryAllTransformer()
       this.selectedLabelRect && this.selectedLabelRect.destroy()
       this.setNormalStatus()
+      this.needSave = true
     },
     loadDataFolder() {
       fs.readdirSync(this.config.inputFolder).forEach(file => {
@@ -245,7 +248,8 @@ export default {
      * 标注上一张图片
      */
     labelPreviousImage() {
-      this.saveLabelRect()
+      if (this.needSave)
+        this.saveLabelRect()
       if (this.currentImageIndex - 1 < 0) {
         showInfo("没有上一张了")
         return
@@ -256,7 +260,8 @@ export default {
      * 标注 下一张图片
      */
     labelNextImage() {
-      this.saveLabelRect()
+      if (this.needSave)
+        this.saveLabelRect()
       if (this.currentImageIndex + 1 >= this.images.length) {
         showInfo("没有下一张了")
         return
@@ -289,6 +294,7 @@ export default {
     labelImage(index) {
       this.destoryAllTransformer()
       this.setNormalStatus()
+      this.needSave = false
       this.labelRects.forEach(labelRect => {
         if (!labelRect.stay) labelRect.destroy()
       })
@@ -337,9 +343,6 @@ export default {
      * 保存当前帧标注结果
      */
     saveLabelRect() {
-      const loading = this.$loading({
-        lock: true
-      })
       this.log = ""
       if (this.labelRects.length === 0) {
         delete this.result[this.currentImage]
@@ -360,7 +363,6 @@ export default {
       }
       writeCurrentDataSetResult(this.result)
       this.drawGroup.removeChildren()
-      loading.close()
     },
     /**
      * 初始化konva
@@ -552,7 +554,11 @@ export default {
       })
       rect.on("transformstart", () => {
       })
+      rect.on("dragmove", () => {
+        this.needSave = true
+      })
       rect.on("transformend", () => {
+        this.needSave = true
       })
       this.labelGroup.add(rect)
       return rect
@@ -571,6 +577,7 @@ export default {
       if (rect && this.config.autoSelect)
         this.$nextTick(()=>{this.selectRect(rect)})
       this.setNormalStatus()
+      this.needSave = true
     }
   }
 }
