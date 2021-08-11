@@ -64,7 +64,7 @@ module.exports = {
         "linux": {
           "icon": "public/images/logo.png",
           "target": [
-            "AppImage"
+            "deb"
           ]
         }
         //         "publish": [{
