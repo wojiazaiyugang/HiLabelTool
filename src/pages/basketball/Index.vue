@@ -87,6 +87,7 @@ import {getCurrentWindow} from "@electron/remote"
 import {writeCurrentDataSetResult, readCurrentDatasetResult} from "@/utils/result"
 import {updateConfig} from "@/utils/config"
 import {copyFile, moveFile} from "@/utils/fs"
+import {showInfo} from "@/utils/notice"
 
 const STATUS = { // 状态
   normal: "正常状态",
@@ -207,7 +208,6 @@ export default {
         if (i >= this.config.labels.length) return
         register(getCurrentWindow(),i.toString(), ()=> {this.setSelectedRectLabel(this.config.labels[i])})
       }
-
     },
     changeStay(labelRect) {
       this.$set(labelRect, "stay", ! labelRect.stay)
@@ -247,7 +247,7 @@ export default {
     labelPreviousImage() {
       this.saveLabelRect()
       if (this.currentImageIndex - 1 < 0) {
-        this.$message.info("没有上一张了")
+        showInfo("没有上一张了")
         return
       }
       this.labelImage(this.currentImageIndex - 1)
@@ -258,7 +258,7 @@ export default {
     labelNextImage() {
       this.saveLabelRect()
       if (this.currentImageIndex + 1 >= this.images.length) {
-        this.$message.info("没有下一张了")
+        showInfo("没有下一张了")
         return
       }
       this.labelImage(this.currentImageIndex + 1)
@@ -337,6 +337,9 @@ export default {
      * 保存当前帧标注结果
      */
     saveLabelRect() {
+      const loading = this.$loading({
+        lock: true
+      })
       this.log = ""
       if (this.labelRects.length === 0) {
         delete this.result[this.currentImage]
@@ -356,6 +359,8 @@ export default {
           copyFile(this.currentImagePath, toFile)
       }
       writeCurrentDataSetResult(this.result)
+      this.drawGroup.removeChildren()
+      loading.close()
     },
     /**
      * 初始化konva
