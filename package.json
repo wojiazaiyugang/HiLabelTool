@@ -1,6 +1,9 @@
 {
   "name": "hi-label-tool",
   "version": "0.1.0",
+  "description": "label tool",
+  "homepage": "https://github.com/wojiazaiyugang/HiLabelTool",
+  "author": "wojiazaiyugang <wojiazaiyugang@outlook.com>",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
