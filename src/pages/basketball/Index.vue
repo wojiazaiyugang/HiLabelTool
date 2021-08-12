@@ -176,7 +176,7 @@ export default {
       initStageSize: {width: null, height: null},
       stayLabelRects: [], // 保存到下一帧的label rect
       result: {}, // 当前数据集的result
-      // 是否需要save，防止疯狂切图的时候不停保存数据错乱，以下情况需要保存：新建bbox，缩放bbox、移动bbox、删除bbox
+      // 是否需要save，防止疯狂切图的时候不停保存数据错乱，以下情况需要保存：新建bbox，缩放bbox、移动bbox、删除bbox、保留bbox传到下一张
       needSave: false,
     }
   },
@@ -297,6 +297,7 @@ export default {
       this.needSave = false
       this.labelRects.forEach(labelRect => {
         if (!labelRect.stay) labelRect.destroy()
+        else this.needSave = true
       })
       this.imageGroup.removeChildren()
       this.currentImageIndex = index
