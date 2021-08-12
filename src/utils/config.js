@@ -19,8 +19,8 @@ export const CONFIG_TYPE = {
     description: "数据二分类",
     defaultConfig: Object.assign({}, COMMON_DEFAULT_CONFIG, {
       type: "classification2",
-      negativeLabel: "", // 负样本标签
-      positiveLabel: "", // 正样本标签
+      negativeLabel: "0", // 负样本标签
+      positiveLabel: "1", // 正样本标签
     }),
   },
   bbox: {

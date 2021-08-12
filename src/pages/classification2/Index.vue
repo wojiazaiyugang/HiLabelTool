@@ -1,29 +1,30 @@
 <template>
   <div class="classification2">
     <div style="display: flex;flex: 1">
-      <div class="button" @click="labelCurrentImage(config.negativeLabel)">
+      <div class="button" :class="result[currentImage] === config.negativeLabel ? 'active' : null" @click="labelCurrentImage(config.negativeLabel)">
         负样本<br/>
         标签：{{config.negativeLabel }}<br/>
         {{ config.outputFolder }}<br/>
         已标注：{{negativeResultCount}}<br/>
-        快捷键：键盘下方向
       </div>
       <div style="width: 60%;display: flex;flex-direction: column;justify-content: center;align-content: center">
         <div style="text-align: center;font-size: 12px">
+          <div style="font-size: 18px">标注进度：{{currentIndex+1}}/{{images.length}}</div>
           当前正在标注：{{images[currentIndex]}}<br/>
-          <el-button>上一张（←）</el-button>
-          <el-button>下一张（→）</el-button><br/>
-          共计{{images.length}}个,当前{{currentIndex + 1}} <br/>
+          快捷键：<br />
+          标记为正样本并切换到下一张：方向键上（或者点击右侧正样本区域） <br />
+          标记为负样本并切换到下一张：方向键下（或者点击左侧负样本区域） <br />
+          切换到上一张 ：方向键左<br />
+          切换到下一张：方向键右 <br />
         </div>
-        <img v-if="currentImage" :src="currentImage" style="height: 100%;width: 100%;object-fit: contain"/>
+        <img v-if="currentImagePath" :src="currentImagePath" style="height: 100%;width: 100%;object-fit: contain"/>
         <div v-else style="text-align: center">标注完成</div>
       </div>
-      <div class="button" @click="labelCurrentImage(config.positiveLabel)">
+      <div class="button" :class="result[currentImage] === config.positiveLabel ? 'active' : null" @click="labelCurrentImage(config.positiveLabel)">
         正样本<br/>
         标签：{{config.positiveLabel }}<br/>
         {{ config.outputFolder }}<br/>
         已标注：{{positiveResultCount}}<br/>
-        快捷键：键盘上方向
       </div>
     </div>
     <div style="height: 30px;border-top: 1px solid black">
@@ -40,7 +41,8 @@ import {register, unregisterAll} from "electron-localshortcut"
 import {mapState} from "vuex"
 
 import {copyFile, moveFile, readAllImage} from "@/utils/fs"
-import {writeDataSetResult} from "@/utils/result"
+import {readCurrentDatasetResult, writeDataSetResult} from "@/utils/result"
+import {showInfo} from "@/utils/notice"
 
 const rules = {
   inputFolder: [{required: true, message: "不能为空"}],
@@ -54,9 +56,12 @@ export default {
     ...mapState({
       config: state => state.config.config
     }),
-    // 当前正在分类的图片
     currentImage() {
-      if (this.currentIndex >=0 && this.images.length > this.currentIndex) return path.join(this.config.inputFolder, this.images[this.currentIndex])
+      return this.images[this.currentIndex]
+    },
+    // 当前正在分类的图片
+    currentImagePath() {
+      if (this.currentIndex >=0 && this.images.length > this.currentIndex) return path.join(this.config.inputFolder, this.currentImage)
       return ""
     },
     // 正样本个数
@@ -69,9 +74,7 @@ export default {
   },
   mounted() {
     this.images = readAllImage(this.config.inputFolder)
-    this.currentIndex = this.getNextIndex()
-    if (this.currentIndex >= this.images.length)
-      this.$message.info("该数据集已经标注完成")
+    this.result = readCurrentDatasetResult()
     this.addShortcut()
   },
   destroyed() {
@@ -81,10 +84,11 @@ export default {
     return {
       configDialogVisible: true, // 设置对话框可见性
       rules,
-      currentIndex: -1, // 当前index
+      currentIndex: 0, // 当前index
       images: [], // 所有图片
       result: {}, // 标注结果
-      log: ""
+      log: "",
+      saving: false, // 是否正在保存，防止长按
     }
   },
   methods: {
@@ -92,8 +96,22 @@ export default {
      * 注册快捷键
      */
     addShortcut() {
-      register(getCurrentWindow(),"Up", ()=> {this.labelCurrentImage(this.config.negativeLabel)})
-      register(getCurrentWindow(),"Down", ()=> {this.labelCurrentImage(this.config.positiveLabel)})
+      register(getCurrentWindow(),"Up", ()=> {this.labelCurrentImage(this.config.positiveLabel)})
+      register(getCurrentWindow(),"Down", ()=> {this.labelCurrentImage(this.config.negativeLabel)})
+      register(getCurrentWindow(),"Left", ()=> {
+        if (this.currentIndex === 0) {
+          showInfo("没有上一张了")
+          return
+        }
+        this.currentIndex = this.currentIndex - 1
+      })
+      register(getCurrentWindow(),"Right", ()=> {
+        if (this.currentIndex === this.images.length - 1) {
+          showInfo("没有下一张了")
+          return
+        }
+        this.currentIndex = this.currentIndex + 1
+      })
     },
     removeShortcut() {
       unregisterAll(getCurrentWindow())
@@ -108,21 +126,31 @@ export default {
         this.$message.info("已经标注完成")
       return index
     },
-    /**
+    /**s
      * 标注当前图片
      * @param label
      */
     labelCurrentImage(label) {
-      if (this.currentIndex < 0 || this.currentIndex >= this.images.length) return
-      this.log = `${this.currentImage}标记为${label}`
+      if (this.saving) return
+      this.saving = true
+      this.log = `${this.currentImagePath}标记为${label}`
       this.$set(this.result, this.images[this.currentIndex], label)
       let toFile = path.join(this.config.outputFolder, this.images[this.currentIndex])
       if (this.config.transfer)
-        moveFile(this.currentImage, toFile)
+        moveFile(this.currentImagePath, toFile)
       else
-        copyFile(this.currentImage, toFile)
+        copyFile(this.currentImagePath, toFile)
       writeDataSetResult(this.config.outputFolder, this.result)
-      this.currentIndex = this.getNextIndex()
+      if (this.currentIndex === this.images.length - 1) {
+        showInfo("没有下一张了")
+        return
+      }
+      setTimeout(()=> {
+        this.currentIndex = this.currentIndex + 1
+        this.$nextTick(()=> {
+          this.saving = false
+        })
+      }, 200)
     },
   }
 }
@@ -137,6 +165,7 @@ export default {
   .button {
     width: 20%;
     border: 1px solid #5daf34;
+    //box-sizing: border-box;
     padding: 20px;
     word-wrap: break-word;
     font-size: 18px;
@@ -145,6 +174,10 @@ export default {
       cursor: pointer;
       background: #5daf34;
     }
+  }
+
+  .active {
+    background: #5daf34;
   }
 }
 </style>
