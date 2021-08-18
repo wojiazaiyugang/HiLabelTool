@@ -331,13 +331,13 @@ export default {
      * @return {Object}
      */
     getBBox(rect) {
-      let [ltX, ltY] = [Math.round(rect.position().x * this.imageScaleX), Math.round(rect.position().y * this.imageScaleY)]
-      let [rbX, rbY] = [ltX + Math.round(rect.width() * this.imageScaleX * rect.scaleX()), ltY + Math.round(rect.height() * this.imageScaleY * rect.scaleY())]
+      let [x1, y1] = [Math.round(rect.position().x * this.imageScaleX), Math.round(rect.position().y * this.imageScaleY)]
+      let [x2, y2] = [x1 + Math.round(rect.width() * this.imageScaleX * rect.scaleX()), y1 + Math.round(rect.height() * this.imageScaleY * rect.scaleY())]
       return {
-        ltX: ltX,
-        ltY: ltY,
-        rbX: rbX,
-        rbY: rbY
+        ltX: Math.min(x1, x2),
+        ltY: Math.min(y1, y2),
+        rbX: Math.max(x1, x2),
+        rbY: Math.max(y1, y2)
       }
     },
     /**
