@@ -50,10 +50,10 @@ export const readAllImage = folder => {
  * @param {String} from
  * @param {String} to
  */
-export const copyFile = (from, to) => {
+export const copyFile = async (from, to) => {
   let readPipe = fs.createReadStream(from)
   let writePipe = fs.createWriteStream(to)
-  readPipe.pipe(writePipe)
+  await readPipe.pipe(writePipe)
 }
 
 /**
@@ -61,8 +61,8 @@ export const copyFile = (from, to) => {
  * @param {String} from
  * @param {String} to
  */
-export const moveFile = (from, to) => {
-  copyFile(from, to)
+export const moveFile = async (from, to) => {
+  await copyFile(from, to)
   fs.unlinkSync(from)
 }
 

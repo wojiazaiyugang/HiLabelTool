@@ -343,7 +343,7 @@ export default {
     /**
      * 保存当前帧标注结果
      */
-    saveLabelRect() {
+    async saveLabelRect() {
       this.log = ""
       if (this.labelRects.length === 0) {
         delete this.result[this.currentImage]
@@ -358,9 +358,9 @@ export default {
         this.result[this.currentImage] = result
         let toFile = path.join(this.config.outputFolder, this.currentImage)
         if (this.config.transfer)
-          moveFile(this.currentImagePath, toFile)
+          await moveFile(this.currentImagePath, toFile)
         else
-          copyFile(this.currentImagePath, toFile)
+          await copyFile(this.currentImagePath, toFile)
       }
       writeCurrentDataSetResult(this.result)
       this.drawGroup.removeChildren()

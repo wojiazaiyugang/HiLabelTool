@@ -66,7 +66,7 @@ export default {
   name: "Index",
   data() {
     return {
-      config: JSON.parse(JSON.stringify(CONFIG_TYPE.classification2.defaultConfig)), // 配置
+      config: JSON.parse(JSON.stringify(CONFIG_TYPE.bbox.defaultConfig)), // 配置
       RULES,
       CONFIG_TYPE,
       isAddingLabel: false, // 正在新增标签
