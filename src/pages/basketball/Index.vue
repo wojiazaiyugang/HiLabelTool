@@ -357,10 +357,7 @@ export default {
         }))
         this.result[this.currentImage] = result
         let toFile = path.join(this.config.outputFolder, this.currentImage)
-        if (this.config.transfer)
-          await moveFile(this.currentImagePath, toFile)
-        else
-          await copyFile(this.currentImagePath, toFile)
+        await copyFile(this.currentImagePath, toFile)
       }
       writeCurrentDataSetResult(this.result)
       this.drawGroup.removeChildren()

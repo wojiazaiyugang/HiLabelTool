@@ -7,7 +7,6 @@ import store from "@/store/index"
 const COMMON_DEFAULT_CONFIG = {
   inputFolder: "C:\\Users\\wojia\\Desktop\\1", // 输入数据文件夹
   outputFolder: "C:\\Users\\wojia\\Desktop\\output", // 输出文件夹
-  transfer: false, // 移动图片
 }
 /**
  * 配置文件类型

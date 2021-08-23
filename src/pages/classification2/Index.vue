@@ -144,13 +144,7 @@ export default {
       this.log = `${this.currentImagePath}标记为${label}`
       this.$set(this.result, this.images[this.currentIndex], label)
       let toFile = path.join(this.config.outputFolder, this.images[this.currentIndex])
-      if (this.config.transfer)
-      {
-        if (fs.existsSync(this.currentImagePath))
-          await moveFile(this.currentImagePath, toFile)
-      }
-      else
-        await copyFile(this.currentImagePath, toFile)
+      await copyFile(this.currentImagePath, toFile)
       writeDataSetResult(this.config.outputFolder, this.result)
       if (this.currentIndex === this.images.length - 1) {
         showInfo("没有下一张了")

@@ -32,11 +32,6 @@
       <el-form-item v-if="config.hasOwnProperty('negativeLabel')" label="负样本标签" prop="negativeLabel">
         <el-input v-model="config.negativeLabel" style="width: 300px"></el-input>
       </el-form-item>
-      <el-form-item v-if="config.hasOwnProperty('transfer')" label="移动原始图片">
-        <el-tooltip content="标注完之后原始图片会被移动到目标文件夹而不是复制">
-          <el-switch v-model="config.transfer"></el-switch>
-        </el-tooltip>
-      </el-form-item>
       <el-form-item label="操作">
         <el-button @click="start">开始标注</el-button>
         <el-button @click="loadConfig">加载配置</el-button>
