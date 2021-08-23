@@ -84,9 +84,8 @@ import {mapState, mapMutations} from "vuex"
 import {register, unregisterAll} from "electron-localshortcut"
 import {getCurrentWindow} from "@electron/remote"
 
-import {writeCurrentDataSetResult, readCurrentDatasetResult} from "@/utils/result"
+import {writeCurrentDataSetResult, readCurrentDatasetResult} from "@/utils/data-set"
 import {updateConfig} from "@/utils/config"
-import {copyFile, moveFile} from "@/utils/fs"
 import {showInfo} from "@/utils/notice"
 
 const STATUS = { // 状态
@@ -118,7 +117,7 @@ export default {
      * @return {String}
      */
     currentImagePath() {
-      return path.join(this.config.inputFolder, this.currentImage)
+      return path.join(this.config.dataSet, this.currentImage)
     },
     /**
      * konva的rect
@@ -195,6 +194,7 @@ export default {
       this.$set(rect, "label", label)
     },
     setSelectedRectLabel(label) {
+      if (!this.selectedLabelRect) return
       this.setLabel(this.selectedLabelRect, label)
     },
     /**
@@ -224,14 +224,6 @@ export default {
       })
       if (folders) return folders[0]
     },
-    selectInputFolder() {
-      let folder = this.selectFolder()
-      if (folder) this.config.inputFolder = folder
-    },
-    selectOutputFolder() {
-      let folder = this.selectFolder()
-      if (folder) this.config.outputFolder = folder
-    },
     deleteLabelRect() {
       this.destoryAllTransformer()
       this.selectedLabelRect && this.selectedLabelRect.destroy()
@@ -239,9 +231,13 @@ export default {
       this.needSave = true
     },
     loadDataFolder() {
-      fs.readdirSync(this.config.inputFolder).forEach(file => {
+      fs.readdirSync(this.config.dataSet).forEach(file => {
         if (["jpg", "png"].includes(file.split(".").pop())) this.images.push(file)
       })
+      if (this.config.skipLabeled) {
+        let labeledImages = Object.keys(this.result)
+        this.images = this.images.filter(image => !labeledImages.includes(image))
+      }
       this.labelImage(0)
     },
     /**
@@ -356,8 +352,6 @@ export default {
           imageHeight: this.currentImageSize.height
         }))
         this.result[this.currentImage] = result
-        let toFile = path.join(this.config.outputFolder, this.currentImage)
-        await copyFile(this.currentImagePath, toFile)
       }
       writeCurrentDataSetResult(this.result)
       this.drawGroup.removeChildren()

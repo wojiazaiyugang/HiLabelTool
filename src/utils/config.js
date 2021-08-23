@@ -2,11 +2,12 @@ import path from "path"
 
 import fse from "fs-extra"
 import store from "@/store/index"
+import {getCurrentDataSet} from "@/utils/data-set"
 
 // 公共配置
 const COMMON_DEFAULT_CONFIG = {
-  inputFolder: "C:\\Users\\wojia\\Desktop\\1", // 输入数据文件夹
-  outputFolder: "C:\\Users\\wojia\\Desktop\\output", // 输出文件夹
+  dataSet: "C:\\Users\\wojiazaiyugang\\Desktop\\1", // 数据集文件夹
+  skipLabeled: false, // 跳过已经标注的
 }
 /**
  * 配置文件类型
@@ -54,7 +55,7 @@ export const writeDataSetConfig = (dataSet, config) => {
 }
 
 export const writeCurrentDatasetConfig = config => {
-  let currentDataset = store.state.config.config.outputFolder
+  let currentDataset = getCurrentDataSet()
   writeDataSetConfig(currentDataset, config)
 }
 
@@ -70,7 +71,7 @@ export const readDatasetConfig = (dataSet) => {
 }
 
 export const readCurrentDatasetConfig = () => {
-  let currentDataset = store.state.config.config.outputFolder
+  let currentDataset = getCurrentDataSet()
   return readDatasetConfig(currentDataset)
 }
 

@@ -24,7 +24,7 @@ import fs from "fs"
 import {Message} from "element-ui"
 import {selectFolder} from "@/utils/fs"
 import {getDataSetConfigFile} from "@/utils/config"
-import {readDatasetResult, writeDataSetResult} from "@/utils/result"
+import {readDatasetResult, writeDataSetResult} from "@/utils/data-set"
 import path from "path"
 
 const rules = {

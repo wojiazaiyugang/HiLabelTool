@@ -1,8 +1,8 @@
 const state = {
   config: { // 当前配置
     type: "",
-    inputFolder: "", // 输入数据文件夹
-    outputFolder: "", // 输出文件夹
+    skipLabeled: false, // 跳过已经标注的
+    dataSet: "", // 数据集文件夹
     negativeLabel: "", // 负样本标签
     positiveLabel: "", // 正样本标签
     showCrossHair: false, // 是否显示辅助十字线
@@ -14,7 +14,7 @@ const state = {
 
 const mutations = {
   setConfig(state, config) {
-    state.config = config
+    state.config = JSON.parse(JSON.stringify(config))
   }
 }
 

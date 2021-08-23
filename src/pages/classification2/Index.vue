@@ -4,7 +4,6 @@
       <div class="button" :class="result[currentImage] === config.negativeLabel ? 'active' : null" @click="labelCurrentImage(config.negativeLabel)">
         负样本<br/>
         标签：{{config.negativeLabel }}<br/>
-        {{ config.outputFolder }}<br/>
         已标注：{{negativeResultCount}}<br/>
       </div>
       <div style="width: 60%;display: flex;flex-direction: column;justify-content: center;align-content: center">
@@ -23,7 +22,6 @@
       <div class="button" :class="result[currentImage] === config.positiveLabel ? 'active' : null" @click="labelCurrentImage(config.positiveLabel)">
         正样本<br/>
         标签：{{config.positiveLabel }}<br/>
-        {{ config.outputFolder }}<br/>
         已标注：{{positiveResultCount}}<br/>
       </div>
     </div>
@@ -41,8 +39,8 @@ import {getCurrentWindow} from "@electron/remote"
 import {register, unregisterAll} from "electron-localshortcut"
 import {mapState} from "vuex"
 
-import {copyFile, moveFile, readAllImage} from "@/utils/fs"
-import {readCurrentDatasetResult, writeDataSetResult} from "@/utils/result"
+import {readAllImage} from "@/utils/fs"
+import {readCurrentDatasetResult, writeDataSetResult} from "@/utils/data-set"
 import {showInfo} from "@/utils/notice"
 import {Message} from "element-ui"
 
@@ -64,7 +62,7 @@ export default {
      * @return {String}
      */
     currentImagePath() {
-      let imagePath = path.join(this.config.inputFolder, this.currentImage)
+      let imagePath = path.join(this.config.dataSet, this.currentImage)
       if (!fs.existsSync(imagePath)) return ""
       if (this.currentIndex >=0 && this.images.length > this.currentIndex) return imagePath
       return ""
@@ -78,8 +76,12 @@ export default {
     }
   },
   mounted() {
-    this.images = readAllImage(this.config.inputFolder)
+    this.images = readAllImage(this.config.dataSet)
     this.result = readCurrentDatasetResult()
+    if (this.config.skipLabeled) {
+      let labeledImages = Object.keys(this.result)
+      this.images = this.images.filter(image => !labeledImages.includes(image))
+    }
     this.addShortcut()
   },
   destroyed() {
@@ -143,9 +145,7 @@ export default {
       this.saving = true
       this.log = `${this.currentImagePath}标记为${label}`
       this.$set(this.result, this.images[this.currentIndex], label)
-      let toFile = path.join(this.config.outputFolder, this.images[this.currentIndex])
-      await copyFile(this.currentImagePath, toFile)
-      writeDataSetResult(this.config.outputFolder, this.result)
+      writeDataSetResult(this.config.dataSet, this.result)
       if (this.currentIndex === this.images.length - 1) {
         showInfo("没有下一张了")
         return

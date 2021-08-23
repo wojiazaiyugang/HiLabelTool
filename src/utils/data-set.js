@@ -15,6 +15,14 @@ const getDataSetResultFile = folder => {
 }
 
 /**
+ * 获取当前数据集
+ * @return {string}
+ */
+export const getCurrentDataSet = () => {
+  return store.state.config.config.dataSet
+}
+
+/**
  * 读取数据集的标注结果
  * @return {Object}
  */
@@ -29,7 +37,7 @@ export const readDatasetResult = dataSet => {
  * @return {Object}
  */
 export const readCurrentDatasetResult = () => {
-  let currentDataset = store.state.config.config.outputFolder
+  let currentDataset = getCurrentDataSet()
   return readDatasetResult(currentDataset)
 }
 
@@ -48,6 +56,6 @@ export const writeDataSetResult = (dataSet, result) => {
  * @param result
  */
 export const writeCurrentDataSetResult = result => {
-  let currentDataset = store.state.config.config.outputFolder
+  let currentDataset = getCurrentDataSet()
   writeDataSetResult(currentDataset, result)
 }

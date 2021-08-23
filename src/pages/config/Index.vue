@@ -7,13 +7,9 @@
                      :label="name + '（' + description + ')'" :value="defaultConfig"></el-option>
         </el-select>
       </el-form-item>
-      <el-form-item v-if="config.hasOwnProperty('inputFolder')" label="输入数据目录" prop="inputFolder">
-        <el-input v-model="config.inputFolder" style="width: 500px"></el-input>
-        <el-button @click="selectInputFolder">选择</el-button>
-      </el-form-item>
-      <el-form-item v-if="config.hasOwnProperty('outputFolder')" label="生成结果目录" prop="outputFolder">
-        <el-input v-model="config.outputFolder" style="width: 500px"></el-input>
-        <el-button @click="selectOutputFolder">选择</el-button>
+      <el-form-item v-if="config.hasOwnProperty('dataSet')" label="数据集目录" prop="dataSet">
+        <el-input v-model="config.dataSet" style="width: 500px"></el-input>
+        <el-button @click="selectDataSet">选择</el-button>
       </el-form-item>
       <el-form-item v-if="config.hasOwnProperty('labels')" label="标签">
         <el-tag v-for="(label, index) in config.labels" :key="index" closable @close="deleteLabel(index)" style="margin-right: 10px;color: white" :color="label.color">{{ label.name }}</el-tag>
@@ -31,6 +27,9 @@
       </el-form-item>
       <el-form-item v-if="config.hasOwnProperty('negativeLabel')" label="负样本标签" prop="negativeLabel">
         <el-input v-model="config.negativeLabel" style="width: 300px"></el-input>
+      </el-form-item>
+      <el-form-item v-if="config.hasOwnProperty('skipLabeled')" label="跳过已标注">
+        <el-switch v-model="config.skipLabeled"></el-switch>
       </el-form-item>
       <el-form-item label="操作">
         <el-button @click="start">开始标注</el-button>
@@ -51,10 +50,9 @@ import {getRandomColor} from "@/utils/color"
 
 const RULES = {
   type: [{required: true, message: "不能为空"}],
-  inputFolder: [{required: true, message: "不能为空"}],
-  outputFolder: [{required: true, message: "不能为空"}],
+  dataSet: [{required: true, message: "不能为空"}],
   positiveLabel: [{required: true, message: "不能为空"}],
-  negativeLabel: [{required: true, message: "不能为空"}],
+  negativeLabel: [{required: true, message: "不能为空"}]
 }
 
 export default {
@@ -78,16 +76,13 @@ export default {
       } catch (err) {
         return
       }
-      writeDataSetConfig(this.config.outputFolder, this.config)
+      writeDataSetConfig(this.config.dataSet, this.config)
       this.setConfig(this.config)
       if (this.config.type === CONFIG_TYPE.bbox.defaultConfig.type) this.routeTo("/basketball")
       else if (this.config.type === CONFIG_TYPE.classification2.defaultConfig.type) this.routeTo("/classification2")
     },
-    async selectInputFolder() {
-      this.config.inputFolder = await selectFolder()
-    },
-    async selectOutputFolder() {
-      this.config.outputFolder = await selectFolder()
+    async selectDataSet() {
+      this.config.dataSet = await selectFolder()
     },
     beginAddLabel() {
       this.isAddingLabel = true
