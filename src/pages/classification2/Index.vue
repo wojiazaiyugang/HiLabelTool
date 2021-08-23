@@ -12,13 +12,13 @@
           <div style="font-size: 18px">标注进度：{{currentIndex+1}}/{{images.length}}</div>
           当前正在标注：{{images[currentIndex]}}<br/>
           快捷键：<br />
-          标记为正样本并切换到下一张：方向键上（或者点击右侧正样本区域） <br />
-          标记为负样本并切换到下一张：方向键下（或者点击左侧负样本区域） <br />
+          标记为正样本并切换到下一张：方向键下（或者点击右侧正样本区域） <br />
+          标记为负样本并切换到下一张：方向键上（或者点击左侧负样本区域） <br />
           切换到上一张 ：方向键左<br />
           切换到下一张：方向键右 <br />
         </div>
         <img v-if="currentImagePath" :src="currentImagePath" style="height: 100%;width: 100%;object-fit: contain"/>
-        <div v-else style="text-align: center">标注完成</div>
+        <div v-else style="text-align: center;font-size: 40px">文件不存在</div>
       </div>
       <div class="button" :class="result[currentImage] === config.positiveLabel ? 'active' : null" @click="labelCurrentImage(config.positiveLabel)">
         正样本<br/>
@@ -44,25 +44,29 @@ import {mapState} from "vuex"
 import {copyFile, moveFile, readAllImage} from "@/utils/fs"
 import {readCurrentDatasetResult, writeDataSetResult} from "@/utils/result"
 import {showInfo} from "@/utils/notice"
+import {Message} from "element-ui"
 
-const rules = {
-  inputFolder: [{required: true, message: "不能为空"}],
-  outputFolder: [{required: true, message: "不能为空"}],
-  positiveLabel: [{required: true, message: "不能为空"}],
-  negativeLabel: [{required: true, message: "不能为空"}],
-}
 export default {
   name: "Index",
   computed: {
     ...mapState({
       config: state => state.config.config
     }),
+    /**
+     * 当前图片名称
+     * @return {String}
+     */
     currentImage() {
-      return this.images[this.currentIndex]
+      return this.images[this.currentIndex] || ""
     },
-    // 当前正在分类的图片
+    /**
+     * 当前正在分类的图片路径
+     * @return {String}
+     */
     currentImagePath() {
-      if (this.currentIndex >=0 && this.images.length > this.currentIndex) return path.join(this.config.inputFolder, this.currentImage)
+      let imagePath = path.join(this.config.inputFolder, this.currentImage)
+      if (!fs.existsSync(imagePath)) return ""
+      if (this.currentIndex >=0 && this.images.length > this.currentIndex) return imagePath
       return ""
     },
     // 正样本个数
@@ -84,7 +88,6 @@ export default {
   data() {
     return {
       configDialogVisible: true, // 设置对话框可见性
-      rules,
       currentIndex: 0, // 当前index
       images: [], // 所有图片
       result: {}, // 标注结果
@@ -97,8 +100,8 @@ export default {
      * 注册快捷键
      */
     addShortcut() {
-      register(getCurrentWindow(),"Up", ()=> {this.labelCurrentImage(this.config.positiveLabel)})
-      register(getCurrentWindow(),"Down", ()=> {this.labelCurrentImage(this.config.negativeLabel)})
+      register(getCurrentWindow(),"Up", ()=> {this.labelCurrentImage(this.config.negativeLabel)})
+      register(getCurrentWindow(),"Down", ()=> {this.labelCurrentImage(this.config.positiveLabel)})
       register(getCurrentWindow(),"Left", ()=> {
         if (this.currentIndex === 0) {
           showInfo("没有上一张了")
@@ -133,6 +136,10 @@ export default {
      */
     async labelCurrentImage(label) {
       if (this.saving) return
+      if (!this.currentImagePath) {
+        Message.info("图片不存在")
+        return
+      }
       this.saving = true
       this.log = `${this.currentImagePath}标记为${label}`
       this.$set(this.result, this.images[this.currentIndex], label)
@@ -149,12 +156,11 @@ export default {
         showInfo("没有下一张了")
         return
       }
-      setTimeout(()=> {
-        this.currentIndex = this.currentIndex + 1
-        this.$nextTick(()=> {
-          this.saving = false
-        })
-      }, 200)
+      this.currentIndex = this.currentIndex + 1
+      // sleep一下防止img标签对图片资源的占用
+      setTimeout(() => {
+        this.saving = false
+      }, 100)
     },
   }
 }

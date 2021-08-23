@@ -1,5 +1,6 @@
 import * as remote from "@electron/remote"
 import fs from "fs"
+import {Message} from "element-ui"
 
 /**
  * 选择一个文件夹，返回文件夹路径
@@ -63,7 +64,7 @@ export const copyFile = async (from, to) => {
  */
 export const moveFile = async (from, to) => {
   await copyFile(from, to)
-  fs.unlinkSync(from)
+  removeFile(from)
 }
 
 /**
@@ -71,5 +72,9 @@ export const moveFile = async (from, to) => {
  * @param file
  */
 export const removeFile = file => {
-  fs.unlinkSync(file)
+  try {
+    fs.unlinkSync(file)
+  } catch (e) {
+    Message.error(e.toString())
+  }
 }
