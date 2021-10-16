@@ -21,6 +21,10 @@ let router = new Router({
     {
       path: "/config",
       component: require("@/pages/config/Index").default
+    },
+    {
+      path: "/video-classification2",
+      component: require("@/pages/video-classification2/Index").default
     }
   ]
 })

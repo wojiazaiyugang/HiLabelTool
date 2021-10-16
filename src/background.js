@@ -45,6 +45,12 @@ async function createWindow() {
         }
       }
     ]
+  },
+  {
+    label: "视频二分类",
+    click: () => {
+      win.webContents.send("route", "/video-classification2")
+    }
   }
   ]))
 
