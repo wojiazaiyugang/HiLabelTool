@@ -19,14 +19,6 @@ let router = new Router({
       component: require("@/pages/classification2/Index").default
     },
     {
-      path: "/check-dataset",
-      component: require("@/pages/check-dataset/Index").default
-    },
-    {
-      path: "/dataset-introduction",
-      component: require("@/pages/dataset-introduction/Index").default
-    },
-    {
       path: "/config",
       component: require("@/pages/config/Index").default
     }

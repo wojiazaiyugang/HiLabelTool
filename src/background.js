@@ -45,24 +45,7 @@ async function createWindow() {
         }
       }
     ]
-  },
-  {
-    label: "数据集",
-    submenu: [
-      {
-        label: "校验数据集",
-        click: () => {
-          win.webContents.send("route", "/check-dataset")
-        }
-      },
-      {
-        label: "数据集说明",
-        click: () => {
-          win.webContents.send("route", "/dataset-introduction")
-        }
-      }
-    ]
-  },
+  }
   ]))
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
